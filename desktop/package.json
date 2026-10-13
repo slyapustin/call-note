@@ -1,0 +1,16 @@
+{
+  "name": "call-note",
+  "productName": "Call Note",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local call transcription and an MCP call library",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "package:mac": "node package.cjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^44.7.0"
+  }
+}

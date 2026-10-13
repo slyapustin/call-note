@@ -1,0 +1,15 @@
+Call Note uses Phonon-2 by Fermion Research.
+https://huggingface.co/FermionResearch/Phonon-2
+Model weights: Creative Commons Attribution 4.0 International (CC BY 4.0).
+https://creativecommons.org/licenses/by/4.0/
+
+Phonon-2 is derived from NVIDIA Parakeet TDT 0.6B v3.
+Copyright (c) NVIDIA Corporation.
+https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
+The upstream Phonon-2 conversion uses a five-value quantized encoder and packed decoder weights. Call Note does not modify these downloaded model weights.
+Upstream modification notices: https://huggingface.co/FermionResearch/Phonon-2/blob/main/NOTICE
+No endorsement by Fermion Research or NVIDIA is implied.
+
+The fermion-research inference package is Apache 2.0; its license and notices accompany this file.
+Electron and Chromium notices are included in the Electron distribution.
+This developer build uses dependencies from the project virtual environment; their individual license files remain in site-packages. A distributable installer must include the notices for all bundled dependencies, including its FFmpeg build.
