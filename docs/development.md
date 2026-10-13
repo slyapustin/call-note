@@ -8,7 +8,7 @@ Local call transcription for macOS, powered by Phonon-2, with a searchable call 
 
 Download the latest DMG from [Releases](https://github.com/slyapustin/call-note/releases/latest).
 
-Open the DMG, drag **Call Note** into **Applications**, and launch it there. Requires an Apple Silicon Mac and macOS 14.2 or later. Python, dependencies, the speech model, and a playable sample are included. No Homebrew or model download is needed for transcription.
+Open the DMG, drag **Call Note** into **Applications**, and launch it there. Requires an Apple Silicon Mac and macOS 14.2 or later. Python, dependencies, the speech model, and playable one-voice and three-voice samples are included. No Homebrew or model download is needed for transcription.
 
 A release named `preview` has not completed Apple notarization; its release notes state the signing status. Signed and notarized builds are the intended distribution format.
 
@@ -47,7 +47,7 @@ Features:
 - Separate live microphone and system-audio streams, labeled You and Others. Others includes all playing apps, not individual speaker diarization. Headphones reduce duplicate capture.
 - Microphone noise suppression and echo cancellation through Chromium's audio processing. This only cleans the transcription input. It does **not** provide a virtual microphone or change what other callers hear.
 - SQLite call library, search, notes, Markdown export, and versioned assistant analyses. Finalized text is saved during recording; interrupted sessions remain readable.
-- Raw call audio stays in memory and is not retained. The synthetic sample remains playable from its existing fixture.
+- Raw call audio stays in memory and is not retained. Synthetic samples remain playable from their bundled fixtures. The sample selector offers the original solo briefing and a three-person discussion using Samantha, Alex, and Daniel. Regenerate the meeting fixture with `.venv/bin/python scripts/build_meeting_sample.py`; voice identities in the script are fixture metadata, not detected speaker labels.
 - Calls up to four hours; rolling decoding uses bounded phrases. Segment timestamps are approximate phrase boundaries, not word alignment.
 
 The first capture requests macOS microphone and Screen & System Audio Recording permission. If denied, enable Call Note in System Settings → Privacy & Security and reopen it. If the system source has never produced a signal after 15 seconds, the app shows an input-level warning. Calendar matching is automatic. Recording currently starts manually; automatic recording triggers remain pending product clarification.

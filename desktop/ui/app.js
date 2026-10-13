@@ -1,7 +1,9 @@
 const $ = id => document.getElementById(id);
 const session = await window.callDesk.session();
 let calendarEvents=[], selectedEvent=null;
-let current, capture, ready = false, sampleUrl, searchTimer, timer, libraryOffset = 0;
+let current, capture, ready = false, searchTimer, timer, libraryOffset = 0;
+const sampleKinds = {sample:'briefing', 'sample-multiparty':'meeting'};
+const sampleAudio = new Map();
 const labels = {microphone:'You',system:'Others',sample:'Sample'};
 const clock = value => `${String(Math.floor(value/60)).padStart(2,'0')}:${String(Math.floor(value%60)).padStart(2,'0')}`;
 function notice(message='') { $('notice').textContent=message; $('notice').hidden=!message; }
@@ -30,8 +32,22 @@ function show(call) {
   $('export').disabled=false; $('prompt').disabled=false;
   $('call-status').textContent=`${call.status} · ${clock(call.duration)} · ${new Date(call.started_at).toLocaleString()}`;
   $('analyses').replaceChildren(...call.analyses.map(analysis=> {const item=document.createElement('div');item.className='analysis';item.textContent=`${analysis.author} · ${new Date(analysis.created_at).toLocaleString()}\n\n${analysis.markdown}`;return item;}));
-  $('sample-audio').hidden=call.source!=='sample';
-  if (call.source==='sample' && !sampleUrl) fetch('/api/demo/audio',{headers:{'x-call-token':session.token}}).then(r=>r.blob()).then(blob=>{$('sample-audio').src=sampleUrl=URL.createObjectURL(blob);});
+  loadSampleAudio(call).catch(error=>{if(current?.id===call.id)notice(error.message);});
+}
+async function loadSampleAudio(call) {
+  const player=$('sample-audio'), kind=sampleKinds[call.source];
+  if (player.dataset.callId!==call.id) {player.pause();player.hidden=true;player.dataset.callId=call.id;}
+  if (!kind) {player.hidden=true;return;}
+  if (!sampleAudio.has(kind)) {
+    sampleAudio.set(kind,fetch(`/api/demo/audio?sample=${kind}`,{headers:{'x-call-token':session.token}}).then(async response=>{
+      if (!response.ok) throw Error('Could not load sample audio.');
+      return URL.createObjectURL(await response.blob());
+    }).catch(error=>{sampleAudio.delete(kind);throw error;}));
+  }
+  const url=await sampleAudio.get(kind);
+  if (current?.id!==call.id) return;
+  if (player.src!==url) player.src=url;
+  player.hidden=false;
 }
 async function library(append=false) {
   if (!append) {libraryOffset=0;$('library').replaceChildren();}
@@ -118,7 +134,7 @@ async function finish(graceful=true) {
 $('start').onclick=handle(async()=> {notice();$('start').disabled=true;capture=new Capture();window.callDesk.recording(true);try{await capture.start();await library();}catch(error){capture.release();capture=null;await status();throw error;}});
 $('stop').onclick=handle(()=>finish());
 $('new').onclick=()=>{if(capture){notice('Stop the current call before starting another.');return;}current=null;$('sample-audio').pause();$('sample-audio').hidden=true;$('transcript').replaceChildren();$('segment-count').textContent='0';$('notes').value='';$('notes').disabled=true;$('save-notes').disabled=true;$('export').disabled=true;$('prompt').disabled=true;$('analyses').replaceChildren();$('meeting-details').hidden=true;$('call-status').textContent='';notice();$('title').value='';selectedEvent=null;handle(refreshCalendar)();$('setup').hidden=false;$('heading').textContent='Ready when you are.';$('title').focus();};
-$('demo').onclick=handle(async()=>{notice('Transcribing the 108-second sample locally…');$('demo').disabled=true;show(await api('/demo',{method:'POST'}));notice('Sample saved. Press play below the transcript to listen.');await library();await status();});
+$('demo').onclick=handle(async()=>{const kind=$('sample-kind').value;notice('Transcribing the sample locally…');$('demo').disabled=true;try{show(await api(`/demo?sample=${kind}`,{method:'POST'}));notice('Sample saved. Press play below the transcript to listen. Voices are not labeled individually yet.');await library();}finally{await status();}});
 $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(handle(()=>library()),200);};
 $('more').onclick=handle(()=>library(true));
 $('save-notes').onclick=handle(async()=>{current=await api('/calls/'+current.id,{method:'PATCH',body:JSON.stringify({notes:$('notes').value})});notice('Notes saved.');});

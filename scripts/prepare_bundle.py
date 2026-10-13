@@ -32,7 +32,7 @@ def main():
     for name in ['static','desktop/ui','desktop/licenses']:
         shutil.copytree(ROOT/name,service/name)
     (service/'samples').mkdir()
-    for name in ['long-clean.wav','long-expected.txt']:
+    for name in ['long-clean.wav','long-expected.txt','meeting.wav','meeting-script.json']:
         shutil.copy2(ROOT/'samples'/name,service/'samples'/name)
     model=ROOT/'.cache/fermion/speech/FermionResearch__Phonon-2/model_phonon2_c4c_int6'
     shutil.copytree(model,service/'models'/model.name)

@@ -60,6 +60,32 @@ def test_auth_and_origin(client):
     assert client.get('/api/calls/missing').status_code == 404
 
 
+def test_samples_keep_distinct_playback_and_preserve_original(client, monkeypatch, tmp_path):
+    samples = tmp_path / 'samples'
+    samples.mkdir()
+    (samples / 'long-clean.wav').write_bytes(b'briefing audio')
+    (samples / 'meeting.wav').write_bytes(b'meeting audio')
+    monkeypatch.setattr(call_app, 'ROOT', tmp_path)
+    decoded = []
+    async def transcribe(function, path, hotwords):
+        decoded.append(path.name)
+        return {'audio_seconds':120, 'text':'Three people discuss next steps.'}
+    monkeypatch.setattr(call_app, 'engine_call', transcribe)
+    original = client.post('/api/demo').json()
+    meeting = client.post('/api/demo?sample=meeting').json()
+    assert decoded == ['long-clean.wav', 'meeting.wav']
+    assert original['source'] == 'sample'
+    assert meeting['source'] == 'sample-multiparty'
+    assert meeting['segments'][0]['source'] == 'sample'
+    assert meeting['status'] == 'complete'
+    assert not call_app.engine.busy
+    assert client.get('/api/demo/audio').content == b'briefing audio'
+    assert client.get('/api/demo/audio?sample=meeting').content == b'meeting audio'
+    assert client.post('/api/demo?sample=unknown').status_code == 422
+    assert client.get('/api/demo/audio?sample=../calls.sqlite3').status_code == 422
+    assert client.get('/api/demo/audio?sample=meeting', headers={'x-call-token':''}).status_code == 401
+
+
 class FakeLive:
     def __init__(self, *_):
         self.samples=0

@@ -27,3 +27,5 @@ token*.json
 
 .build/
 release/
+
+samples/meeting-turns.json

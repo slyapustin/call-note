@@ -5,6 +5,7 @@ import json
 import os
 import secrets
 import time
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
@@ -18,6 +19,10 @@ from streaming import LiveTranscriber
 
 TOKEN = os.environ.get('CALL_DESK_TOKEN', secrets.token_urlsafe(32))
 store = None
+SAMPLES = {
+    'briefing': ('long-clean.wav', 'Sample · Project briefing', 'sample'),
+    'meeting': ('meeting.wav', 'Sample · Three-person discussion', 'sample-multiparty'),
+}
 
 @asynccontextmanager
 async def lifespan(application):
@@ -75,13 +80,14 @@ def export(call_id: str):
     return PlainTextResponse(transcript_markdown(store.get(call_id)))
 
 @app.post('/api/demo')
-async def demo():
+async def demo(sample: Literal['briefing', 'meeting'] = 'briefing'):
     if engine.status != 'ready' or engine.busy:
         raise HTTPException(409, 'Engine is loading or busy.')
     engine.busy = True
     try:
-        result = await engine_call(engine.transcribe_wav, ROOT / 'samples/long-clean.wav', [])
-        call = store.create('Sample · Project briefing', 'sample')
+        filename, title, source = SAMPLES[sample]
+        result = await engine_call(engine.transcribe_wav, ROOT / 'samples' / filename, [])
+        call = store.create(title, source)
         store.append(call['id'], 'sample', 0, result['audio_seconds'], result['text'])
         store.finish(call['id'], result['audio_seconds'])
         return store.get(call['id'])
@@ -89,8 +95,8 @@ async def demo():
         engine.busy = False
 
 @app.get('/api/demo/audio')
-def demo_audio():
-    return FileResponse(ROOT / 'samples/long-clean.wav', media_type='audio/wav')
+def demo_audio(sample: Literal['briefing', 'meeting'] = 'briefing'):
+    return FileResponse(ROOT / 'samples' / SAMPLES[sample][0], media_type='audio/wav')
 
 @app.websocket('/api/record')
 async def record(socket: WebSocket):

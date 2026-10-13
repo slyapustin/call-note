@@ -1,0 +1,12 @@
+[
+  {"speaker":"Maya","voice":"Samantha","rate":165,"text":"Hi everyone, this is Maya. Thanks for joining our product planning call. Today we need to agree on the launch date, review the customer feedback, and assign the remaining work. Chris, could you start with the engineering update?"},
+  {"speaker":"Chris","voice":"Alex","rate":170,"text":"Sure. The search feature is working, and the team fixed the slow loading issue yesterday. We still need two days to test the installation process on a second Mac. I suggest we aim for Thursday, rather than Wednesday."},
+  {"speaker":"Owen","voice":"Daniel","rate":160,"text":"That works for me. This is Owen, from customer support. Three people asked for a clearer download button, and two could not find their saved notes. Those are small changes, but they would make the first experience much easier."},
+  {"speaker":"Maya","voice":"Samantha","rate":165,"text":"Good point. Let's keep the launch on Thursday and improve those two things first. Chris, can you add a direct download link? I will rewrite the welcome screen so people know where to start."},
+  {"speaker":"Chris","voice":"Alex","rate":170,"text":"Yes, I can do that this afternoon. One question about the notes: should we show the most recent call automatically, or always open a new blank call?"},
+  {"speaker":"Owen","voice":"Daniel","rate":160,"text":"I would keep the new call screen, with a clear list of recent conversations beside it. People should be able to return to yesterday's meeting without having to search for the exact title."},
+  {"speaker":"Maya","voice":"Samantha","rate":165,"text":"Agreed. We will keep the recent calls visible. What about the help article? Can we have a short installation guide ready before the launch?"},
+  {"speaker":"Owen","voice":"Daniel","rate":160,"text":"Absolutely. I will write the guide tomorrow morning and send it to both of you by noon. It will cover installation, microphone access, and how to export a transcript."},
+  {"speaker":"Chris","voice":"Alex","rate":170,"text":"I will finish the second Mac test by Wednesday at four. If anything blocks installation, I will post the details immediately. Otherwise, I will confirm that we are ready."},
+  {"speaker":"Maya","voice":"Samantha","rate":165,"text":"Great. Thursday is our target. Chris owns the download link and installation testing. Owen owns the help article. I own the welcome screen. Let's check in tomorrow at ten. Thanks, everyone."}
+]
