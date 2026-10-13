@@ -9,8 +9,6 @@ for scale in [1, 2] {
     bitmap.size = NSSize(width: 20, height: 20)
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
-    let transform = AffineTransform(scale: CGFloat(scale))
-    (transform as NSAffineTransform).concat()
     NSColor.black.setStroke()
     let bubble = NSBezierPath(roundedRect: NSRect(x: 2.5, y: 4.5, width: 15, height: 13), xRadius: 4, yRadius: 4)
     bubble.lineWidth = 1.6
