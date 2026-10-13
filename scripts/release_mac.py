@@ -1,5 +1,7 @@
 """Sign, optionally notarize, and create a drag-to-Applications DMG."""
 import argparse
+import base64
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -66,12 +68,20 @@ def main():
         run('xcrun','stapler','staple',app)
         run('spctl','--assess','--type','execute','--verbose=2',app)
     if args.sign_only:return
+    if args.notary_profile:
+        update_zip=output/f'Call-Note-{version}-macOS-arm64.zip'
+        run('ditto','-c','-k','--keepParent',app,update_zip)
+        digest=base64.b64encode(hashlib.file_digest(update_zip.open('rb'),'sha512').digest()).decode()
+        manifest={'version':version,'files':[{'url':update_zip.name,'sha512':digest,'size':update_zip.stat().st_size}],
+                  'path':update_zip.name,'sha512':digest,'releaseDate':datetime.now(timezone.utc).isoformat()}
+        (output/'latest-mac.yml').write_text(json.dumps(manifest,indent=2)+'\n')
+        (output/(update_zip.name+'.sha256')).write_text(f'{hashlib.file_digest(update_zip.open("rb"),"sha256").hexdigest()}  {update_zip.name}\n')
     staging=ROOT/'.build/dmg-root'
     if staging.exists():shutil.rmtree(staging)
     staging.mkdir(parents=True)
     shutil.copytree(app,staging/app.name,symlinks=True)
     (staging/'Applications').symlink_to('/Applications')
-    (staging/'INSTALL.txt').write_text('Call Note '+version+'\n\nDrag Call Note to Applications, then open it there.\nApple Silicon Mac, macOS 14.2 or later.\nPython and the speech model are included; no Homebrew required.\nAllow microphone and system-audio recording when prompted.\n\nUpdates: Call Note menu > Check for Updates. Download the new version, quit the app, and replace it in Applications. Saved calls remain in your user Library.\n')
+    (staging/'INSTALL.txt').write_text('Call Note '+version+'\n\nDrag Call Note to Applications, then open it there.\nApple Silicon Mac, macOS 14.2 or later.\nPython and the speech model are included; no Homebrew required.\nAllow microphone and system-audio recording when prompted.\n\nUpdates check automatically after launch and every four hours. New versions download in the background and install when you quit. For an optional manual check or restart, use Call Note menu > Check for Updates. Saved calls remain in your user Library.\n')
     suffix='' if args.notary_profile else '-preview'
     dmg=output/f'Call-Note-{version}-macOS-arm64{suffix}.dmg'
     run('hdiutil','create','-volname','Call Note','-srcfolder',staging,'-ov','-format','UDZO',dmg)

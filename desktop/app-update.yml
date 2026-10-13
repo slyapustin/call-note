@@ -1,0 +1,4 @@
+provider: github
+owner: slyapustin
+repo: call-note
+updaterCacheDirName: call-note-updater

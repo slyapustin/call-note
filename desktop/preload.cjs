@@ -5,7 +5,11 @@ contextBridge.exposeInMainWorld('callDesk', {
   calendarEvents:()=>ipcRenderer.invoke('calendar:events'),
   calendarDisconnect:()=>ipcRenderer.invoke('calendar:disconnect'),
   connectAssistants:()=>ipcRenderer.invoke('connect-assistants'),
-  updates:()=>ipcRenderer.invoke('updates'),
+  updateStatus:()=>ipcRenderer.invoke('updates:status'),
+  updateCheck:()=>ipcRenderer.invoke('updates:check'),
+  updateInstall:()=>ipcRenderer.invoke('updates:install'),
+  onUpdateState:callback=>ipcRenderer.on('updates:state',(_event,state)=>callback(state)),
+  onUpdateOpen:callback=>ipcRenderer.on('updates:open',()=>callback()),
   session:()=>ipcRenderer.invoke('session'),
   microphone:()=>ipcRenderer.invoke('microphone'),
   recording:value=>ipcRenderer.send('recording', !!value)

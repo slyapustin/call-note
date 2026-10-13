@@ -115,7 +115,7 @@ async function finish(graceful=true) {
   const recording=capture;notice();$('stop').disabled=true;$('stop').textContent='Saving…';
   try {await recording.stop(graceful);} catch(error){notice(error.message);} finally {capture=null;$('stop').disabled=false;$('stop').textContent='■ Stop & save';await library();await status();if(current)show(await api('/calls/'+current.id));}
 }
-$('start').onclick=handle(async()=> {notice();$('start').disabled=true;capture=new Capture();try{await capture.start();await library();}catch(error){capture.release();capture=null;await status();throw error;}});
+$('start').onclick=handle(async()=> {notice();$('start').disabled=true;capture=new Capture();window.callDesk.recording(true);try{await capture.start();await library();}catch(error){capture.release();capture=null;await status();throw error;}});
 $('stop').onclick=handle(()=>finish());
 $('new').onclick=()=>{if(capture){notice('Stop the current call before starting another.');return;}current=null;$('sample-audio').pause();$('sample-audio').hidden=true;$('transcript').replaceChildren();$('segment-count').textContent='0';$('notes').value='';$('notes').disabled=true;$('save-notes').disabled=true;$('export').disabled=true;$('prompt').disabled=true;$('analyses').replaceChildren();$('meeting-details').hidden=true;$('call-status').textContent='';notice();$('title').value='';selectedEvent=null;handle(refreshCalendar)();$('setup').hidden=false;$('heading').textContent='Ready when you are.';$('title').focus();};
 $('demo').onclick=handle(async()=>{notice('Transcribing the 108-second sample locally…');$('demo').disabled=true;show(await api('/demo',{method:'POST'}));notice('Sample saved. Press play below the transcript to listen.');await library();await status();});
@@ -145,4 +145,18 @@ setInterval(()=>{if(!capture&&$('setup').hidden===false)handle(refreshCalendar)(
 
 $('connect-assistants').onclick=handle(async()=>{const button=$('connect-assistants');button.disabled=true;try{$('connection-result').textContent=await window.callDesk.connectAssistants();}finally{button.disabled=false;}});
 
-$('updates').onclick=handle(()=>window.callDesk.updates());$('updates').textContent=`v${session.version} · Check for updates ↗`;
+function renderUpdate(state) {
+  $('update-status').textContent=state.message;
+  $('app-version').textContent=`v${session.version}${state.phase==='ready'?' · Update installs on quit':''}`;
+  $('update-install').hidden=state.phase!=='ready';
+  const busy=['checking','downloading','verifying','ready'].includes(state.phase);
+  $('update-check').disabled=busy||!state.enabled;
+}
+function updateAction(fn) {return async()=>{try {await fn();} catch(error){$('update-status').textContent=error.message;}};}
+async function openUpdates() {renderUpdate(await window.callDesk.updateStatus());$('update-dialog').showModal();await window.callDesk.updateCheck();}
+window.callDesk.onUpdateOpen(handle(openUpdates));
+window.callDesk.onUpdateState(renderUpdate);
+$('update-close').onclick=()=>$('update-dialog').close();
+$('update-check').onclick=updateAction(()=>window.callDesk.updateCheck());
+$('update-install').onclick=updateAction(()=>window.callDesk.updateInstall());
+renderUpdate(await window.callDesk.updateStatus());

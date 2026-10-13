@@ -6,7 +6,7 @@ Local call transcription for macOS, powered by Phonon-2, with a searchable call 
 
 ## Download and install
 
-Download the latest DMG from [Releases](https://github.com/slyapustin/call-note/releases/latest). Sign in to GitHub as an account with access to this private repository.
+Download the latest DMG from [Releases](https://github.com/slyapustin/call-note/releases/latest).
 
 Open the DMG, drag **Call Note** into **Applications**, and launch it there. Requires an Apple Silicon Mac and macOS 14.2 or later. Python, dependencies, the speech model, and a playable sample are included. No Homebrew or model download is needed for transcription.
 
@@ -14,7 +14,9 @@ A release named `preview` has not completed Apple notarization; its release note
 
 ## Updates
 
-Choose **Call Note → Check for Updates** (also available beside the version in the sidebar). This opens the private GitHub releases page. Download the newer DMG, quit Call Note, and replace the app in Applications. Calls and Calendar settings remain in your user Library. Version 0.2 uses manual download and replacement; background download and automatic installation are not implemented.
+Call Note checks automatically after launch and every four hours, downloads newer releases in the background, and installs on quit. No GitHub login is needed with public releases. The sidebar shows only the installed version. **Call Note → Check for Updates** remains available for an optional manual check or **Restart & install**.
+
+Restart is blocked while a call is recording or being saved. Calls and Calendar settings remain in your user Library. The existing 0.2.0 preview requires manual installation; install the first signed release from its DMG once to enable future automatic updates.
 
 ## Build from source
 

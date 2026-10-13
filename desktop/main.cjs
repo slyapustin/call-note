@@ -6,7 +6,7 @@ const path = require('node:path');
 const net = require('node:net');
 app.setName('Call Note');
 app.setPath('userData', path.join(app.getPath('appData'), 'CallDesk'));
-let calendar;
+let calendar, updates;
 let window, service, quitting = false, recording = false;
 const token = randomBytes(32).toString('hex');
 let origin;
@@ -18,12 +18,13 @@ app.on('second-instance', () => { window?.show(); window?.focus(); });
 function trusted(event) { return event.sender === window?.webContents && event.senderFrame?.url.startsWith(origin + '/'); }
 app.whenReady().then(async () => {
   const updatesURL='https://github.com/slyapustin/call-note/releases/latest';
-  const openUpdates=()=>shell.openExternal(updatesURL);
+  const openReleases=()=>shell.openExternal(updatesURL);
+  const openUpdates=()=>{window?.show();window?.webContents.send('updates:open');};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {label:'Call Note',submenu:[{role:'about'},{label:'Check for Updates…',click:openUpdates},{type:'separator'},{role:'services'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{role:'quit'}]},
-    {role:'editMenu'},{role:'viewMenu'},{role:'windowMenu'},{role:'help',submenu:[{label:'Downloads & Release Notes',click:openUpdates}]}
+    {role:'editMenu'},{role:'viewMenu'},{role:'windowMenu'},{role:'help',submenu:[{label:'Downloads & Release Notes',click:openReleases}]}
   ]));
-  ipcMain.handle('updates',event=>{if(!trusted(event))throw Error('Untrusted window');return openUpdates();});
+
   const port = await new Promise(resolve => { const probe = net.createServer(); probe.listen(0, '127.0.0.1', () => { const port = probe.address().port; probe.close(() => resolve(port)); }); });
   origin = `http://127.0.0.1:${port}`;
   const data = app.getPath('userData');
@@ -31,6 +32,11 @@ app.whenReady().then(async () => {
   calendar = new GoogleCalendar({directory:data,safeStorage,dialog,shell,getWindow:()=>window});
   for (const action of ['status','connect','events','disconnect']) ipcMain.handle('calendar:'+action, event=>{if(!trusted(event))throw Error('Untrusted window');return calendar[action]();});
   fs.mkdirSync(data, {recursive:true, mode:0o700});
+  const {MacUpdater} = require('electron-updater');
+  const {Updates} = require('./updates.cjs');
+  updates = new Updates({updater:new MacUpdater(), nativeUpdater:require('electron').autoUpdater, enabled:app.isPackaged && process.platform==='darwin', isRecording:()=>recording,
+    notify:state=>window?.webContents.send('updates:state',state)});
+  for (const action of ['status','check','install']) ipcMain.handle('updates:'+action, (event, value)=>{if(!trusted(event))throw Error('Untrusted window');return updates[action](value);});
   const log = fs.openSync(path.join(data, 'service.log'), 'a', 0o600);
   const environment = {...process.env, CALL_DESK_TOKEN:token, CALL_DESK_DATA:data, PYTHONNOUSERSITE:'1', PYTHONDONTWRITEBYTECODE:'1', HF_HOME:path.join(data,'cache/huggingface'), FERMION_CACHE_DIR:path.join(data,'cache/fermion')};
   delete environment.PYTHONPATH; delete environment.PYTHONHOME;
@@ -80,7 +86,9 @@ app.whenReady().then(async () => {
   }
   if (!ready) { dialog.showErrorBox('Call Note could not start', `Check ${path.join(data,'service.log')}`); app.quit(); return; }
   await window.loadURL(origin);
+  updates.start();
 });
+require('electron').autoUpdater.on('before-quit-for-update',()=>{quitting=true;service?.kill('SIGTERM');});
 app.on('window-all-closed', () => app.quit());
 app.on('before-quit', event => {
   if(recording&&!quitting){
