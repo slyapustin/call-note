@@ -6,11 +6,11 @@ Local call transcription for macOS, powered by Phonon-2, with a searchable call 
 
 ## Download and install
 
-Download the latest DMG from [Releases](https://github.com/slyapustin/call-note/releases/latest).
+Download the newest test DMG from [Releases](https://github.com/slyapustin/call-note/releases). GitHub's Latest badge only identifies stable releases.
 
 Open the DMG, drag **Call Note** into **Applications**, and launch it there. Requires an Apple Silicon Mac and macOS 14.2 or later. Python, dependencies, the speech model, and playable one-voice and three-voice samples are included. No Homebrew or model download is needed for transcription.
 
-A release named `preview` has not completed Apple notarization; its release notes state the signing status. Signed and notarized builds are the intended distribution format.
+A release named `preview` or `test` may not have completed Apple notarization; its release notes state the signing status. Signed and notarized builds are the intended stable distribution format.
 
 ## Menu bar
 
@@ -18,7 +18,7 @@ Call Note stays in the macOS menu bar when you close its window. The menu shows 
 
 ## Updates
 
-Call Note checks automatically after launch and every four hours, downloads newer releases in the background, and installs on quit. No GitHub login is needed with public releases. The sidebar shows only the installed version. **Call Note → Check for Updates** remains available for an optional manual check or **Restart & install**.
+Call Note checks automatically after launch and every four hours, downloads newer stable releases in the background, and installs on quit. Test releases require manual installation. Until a stable release includes the complete update package, checks report that automatic-update packages are unavailable and offer **View downloads**. No GitHub login is needed with public releases. The sidebar shows only the installed version. **Call Note → Check for Updates** remains available for an optional manual check or **Restart & install**.
 
 Restart is blocked while a call is recording or being saved. Calls and Calendar settings remain in your user Library. The existing 0.2.0 preview requires manual installation; install the first signed release from its DMG once to enable future automatic updates.
 

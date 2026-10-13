@@ -6,16 +6,16 @@
 
 Call Note transcribes both sides of your calls on your Mac. Find past conversations, add notes, and ask Codex or Claude to pull out decisions and next steps.
 
-### [Download v0.2.1 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.1/Call-Note-0.2.1-macOS-arm64-test.zip)
+### [Download v0.2.2 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.2/Call-Note-0.2.2-macOS-arm64-test.dmg)
 
-Newest test build · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.1)
+Newest test build · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.2)
 
 **Apple Silicon (M1 or newer) · macOS 14.2+ · English speech**
 
 ## Get started
 
 1. Download the test build using the link above.
-2. Unzip it, then move **Call Note** into **Applications**. Quit any older copy before replacing it.
+2. Open the DMG, then drag **Call Note** into **Applications**. Quit any older copy before replacing it.
 3. Open the app and allow microphone and screen/system-audio recording when asked.
 4. Choose **New call → Start call**. When finished, choose **Stop & save**.
 
@@ -26,13 +26,14 @@ Newest test build · [Release notes](https://github.com/slyapustin/call-note/rel
 - **Read as you talk.** Live transcription of your microphone and the other side of a call.
 - **Find what mattered.** Search saved calls, add notes, or export the transcript.
 - **Ask your assistant.** Choose **Connect your assistant** to connect Codex or Claude.
+- **Try it first.** Play the three-voice sample to hear a short team discussion.
 - **Stay out of the way.** Start and stop calls from the menu bar. Closing the window keeps the app running.
 
 ## Before you try it
 
 Transcription runs locally. Call Note saves text, not call recordings. Connecting an assistant lets it access your call library; transcript text it reads is subject to that assistant’s data policies.
 
-Recording starts manually. Speaker labels currently distinguish **You** and **Others**, not individual people. Use headphones to reduce duplicate audio. Calendar linking needs additional setup. Windows is not available yet.
+Recording starts manually. Speaker labels currently distinguish **You** and **Others**, not individual people. Use headphones to reduce duplicate audio. Google Calendar sign-in is available to approved test accounts. Windows is not available yet.
 
 Test releases need manual installation. The app can download future stable updates automatically and install them when you quit.
 
