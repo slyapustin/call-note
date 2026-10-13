@@ -6,7 +6,7 @@ const path = require('node:path');
 const net = require('node:net');
 app.setName('Call Note');
 app.setPath('userData', path.join(app.getPath('appData'), 'CallDesk'));
-let calendar, updates;
+let calendar, updates, callTray;
 let window, service, quitting = false, recording = false;
 const token = randomBytes(32).toString('hex');
 let origin;
@@ -14,7 +14,9 @@ const bundled = app.isPackaged && fs.existsSync(path.join(process.resourcesPath,
 const root = bundled ? path.join(process.resourcesPath, 'service') : path.resolve(__dirname, '..');
 const python = bundled ? path.join(process.resourcesPath, 'python/bin/python3.13') : path.join(root, '.venv/bin/python');
 if (!app.requestSingleInstanceLock()) app.quit();
-app.on('second-instance', () => { window?.show(); window?.focus(); });
+function showWindow(){window?.show();window?.focus();}
+app.on('second-instance', showWindow);
+app.on('activate', showWindow);
 function trusted(event) { return event.sender === window?.webContents && event.senderFrame?.url.startsWith(origin + '/'); }
 app.whenReady().then(async () => {
   const updatesURL='https://github.com/slyapustin/call-note/releases/latest';
@@ -69,16 +71,22 @@ app.whenReady().then(async () => {
     if (!trusted(event)) throw Error('Untrusted window');
     return process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true;
   });
-  ipcMain.on('recording', (event, value) => { if (trusted(event)) { recording = !!value; window.setTitle(recording ? '● Recording · Call Note' : 'Call Note'); } });
+  ipcMain.on('recording', (event, value) => { if (trusted(event)) { if(value&&!recording)callTray?.update({phase:'preparing',seconds:0});
+    if(!value)callTray?.update({phase:'idle',seconds:0});
+    recording = !!value; window.setTitle(recording ? '● Recording · Call Note' : 'Call Note'); } });
   window = new BrowserWindow({width:1240,height:850,minWidth:940,minHeight:650,backgroundColor:'#f6f5f1',title:'Call Note',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
   window.webContents.setWindowOpenHandler(() => ({action:'deny'}));
   window.webContents.on('will-navigate', (event, url) => { if (!url.startsWith(origin + '/')) event.preventDefault(); });
   window.on('close', event => {
-    if (recording && !quitting) {
-      const result = dialog.showMessageBoxSync(window, {type:'question',buttons:['Keep recording','Close and end call'],defaultId:0,cancelId:0,message:'A call is being transcribed.',detail:'Closing saves finalized text. The call will be marked interrupted.'});
-      if (result === 0) event.preventDefault(); else recording=false;
-    }
+    if (!quitting) {event.preventDefault();window.hide();}
   });
+  const {CallTray}=require('./tray.cjs');
+  const {Tray,nativeImage}=require('electron');
+  callTray=new CallTray({Tray,Menu,nativeImage,version:app.getVersion(),show:showWindow,
+    start:()=>{showWindow();window.webContents.send('tray:start');},
+    stop:()=>window.webContents.send('tray:stop'),quit:()=>app.quit()});
+  ipcMain.on('tray:state',(event,value)=>{if(trusted(event))callTray.update(value);});
+  window.webContents.on('render-process-gone',()=>{recording=false;callTray.update({phase:'idle',engine:'error'});});
   let ready = false;
   for (let attempt=0;attempt<300;attempt++) {
     try { if ((await fetch(origin)).ok) {ready=true;break;} } catch {}

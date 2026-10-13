@@ -12,6 +12,10 @@ Open the DMG, drag **Call Note** into **Applications**, and launch it there. Req
 
 A release named `preview` has not completed Apple notarization; its release notes state the signing status. Signed and notarized builds are the intended distribution format.
 
+## Menu bar
+
+Call Note stays in the macOS menu bar when you close its window. The menu shows engine readiness, active audio sources, and recording time, with actions to start a call, stop and save, or reopen the window. Choose **Quit Call Note** to fully exit; quitting during a call asks for confirmation.
+
 ## Updates
 
 Call Note checks automatically after launch and every four hours, downloads newer releases in the background, and installs on quit. No GitHub login is needed with public releases. The sidebar shows only the installed version. **Call Note → Check for Updates** remains available for an optional manual check or **Restart & install**.

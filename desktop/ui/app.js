@@ -46,7 +46,7 @@ async function library(append=false) {
   libraryOffset+=rows.length;$('more').hidden=rows.length<50;
 }
 async function status() {
-  try {const state=await api('/status');ready=state.status==='ready'&&!state.busy;$('engine').textContent=state.status==='error'?'Engine unavailable':state.status==='ready'?'● Phonon-2 ready':'Loading Phonon-2…';$('start').disabled=!ready||!!capture;$('demo').disabled=!ready||!!capture;if(state.error)notice(state.error);} catch {$('engine').textContent='Service unavailable';}
+  try {const state=await api('/status');window.callDesk.menuState({engine:state.status,busy:state.busy});ready=state.status==='ready'&&!state.busy;$('engine').textContent=state.status==='error'?'Engine unavailable':state.status==='ready'?'● Phonon-2 ready':'Loading Phonon-2…';$('start').disabled=!ready||!!capture;$('demo').disabled=!ready||!!capture;if(state.error)notice(state.error);} catch {$('engine').textContent='Service unavailable';window.callDesk.menuState({engine:'error'});}
 }
 class Capture {
   constructor() {this.streams=[];this.nodes=[];this.contexts=[];this.stopping=false;this.active=false;this.partial={};this.meters={};}
@@ -95,8 +95,8 @@ class Capture {
       input.connect(node);node.connect(context.destination);await context.resume();
       source.stream.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>{if(!this.stopping){notice(`${labels[source.name]} audio capture ended. The call has been stopped.`);finish(true);}}));
     }
-    this.active=true;this.started=Date.now();window.callDesk.recording(true);$('setup').hidden=true;$('active').hidden=false;
-    timer=setInterval(()=>{ $('elapsed').textContent=clock((Date.now()-this.started)/1000); const system=this.meters.system;if(system&&!system.heard&&Date.now()-system.lastSignal>15000){notice('No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check macOS recording permission.');system.lastSignal=Date.now()+45000;} },1000);
+    this.active=true;this.started=Date.now();window.callDesk.recording(true);window.callDesk.menuState({phase:'recording',seconds:0,microphone:this.streams.some(s=>s.name==='microphone'),system:this.streams.some(s=>s.name==='system')});$('setup').hidden=true;$('active').hidden=false;
+    timer=setInterval(()=>{window.callDesk.menuState({phase:this.stopping?'saving':'recording',seconds:Math.floor((Date.now()-this.started)/1000)}); $('elapsed').textContent=clock((Date.now()-this.started)/1000); const system=this.meters.system;if(system&&!system.heard&&Date.now()-system.lastSignal>15000){notice('No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check macOS recording permission.');system.lastSignal=Date.now()+45000;} },1000);
   }
   renderPartials() { $('partials').replaceChildren(...Object.entries(this.partial).map(([source,text])=>{const p=document.createElement('div');p.className='partial';p.textContent=`${labels[source]}: ${text}`;return p;})); }
   async stop(graceful=true) {
@@ -112,7 +112,7 @@ class Capture {
 }
 async function finish(graceful=true) {
   if(!capture||capture.stopping)return;
-  const recording=capture;notice();$('stop').disabled=true;$('stop').textContent='Saving…';
+  const recording=capture;window.callDesk.menuState({phase:'saving'});notice();$('stop').disabled=true;$('stop').textContent='Saving…';
   try {await recording.stop(graceful);} catch(error){notice(error.message);} finally {capture=null;$('stop').disabled=false;$('stop').textContent='■ Stop & save';await library();await status();if(current)show(await api('/calls/'+current.id));}
 }
 $('start').onclick=handle(async()=> {notice();$('start').disabled=true;capture=new Capture();window.callDesk.recording(true);try{await capture.start();await library();}catch(error){capture.release();capture=null;await status();throw error;}});
@@ -126,6 +126,10 @@ $('prompt').onclick=handle(async()=>{await navigator.clipboard.writeText(`Use Ca
 $('export').onclick=handle(async()=>{const response=await fetch(`/api/calls/${current.id}/export`,{headers:{'x-call-token':session.token}});if(!response.ok)throw Error('Export failed.');const url=URL.createObjectURL(await response.blob());const link=document.createElement('a');link.href=url;link.download=`call-${current.id}.md`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 $('mcp-help').onclick=()=>$('help').showModal();$('close-help').onclick=()=>$('help').close();
 window.addEventListener('focus',handle(async()=>{if(current&&!capture){const notes=$('notes').value;const call=await api('/calls/'+current.id);show(call);if(notes!==current.notes)$('notes').value=notes;}await library();}));
+
+window.callDesk.onMenuStart(()=>{if(capture||!ready){window.callDesk.menuState({phase:capture?'recording':'idle'});return;}$('new').click();$('start').click();});
+window.callDesk.onMenuStop(handle(()=>finish()));
+
 await library();await status();setInterval(status,5000);
 
 async function refreshCalendar() {
