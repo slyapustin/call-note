@@ -73,7 +73,7 @@ Once connected, it refreshes the primary calendar, expands recurring events and 
 In the installed app, open **Connect your assistant → Connect Codex & Claude**. This adds `call-note` to `~/.codex/config.toml` and Claude Desktop's config, preserving existing settings and writing timestamped backups. Restart those clients to load it. For Claude Code, run:
 
 ```bash
-claude mcp add --transport stdio call-note -- /absolute/path/to/phonon-poc/.venv/bin/python /absolute/path/to/phonon-poc/call_mcp.py
+claude mcp add --transport stdio call-note -- /absolute/path/to/phonon-poc/.venv/bin/python -B /absolute/path/to/phonon-poc/call_mcp.py
 ```
 
 Example: “Use Call Note to find my latest call, summarize decisions and action items with segment citations, and save the analysis.”

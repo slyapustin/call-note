@@ -22,6 +22,10 @@ def main():
     parser.add_argument('--sign-only',action='store_true',help='Sign and verify the app without making a DMG')
     args=parser.parse_args()
     app=args.app.resolve()
+    for cache in app.rglob('__pycache__'):
+        if cache.is_dir():shutil.rmtree(cache)
+    service_cache=app/'Contents/Resources/service/.cache'
+    if service_cache.exists():shutil.rmtree(service_cache)
     version=json.loads((ROOT/'desktop/package.json').read_text())['version']
     output=ROOT/'release';output.mkdir(exist_ok=True)
     identity=args.identity or '-'

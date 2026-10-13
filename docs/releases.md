@@ -27,8 +27,8 @@ This signs native dependencies from the inside out with hardened runtime, verifi
 Run the bundled-runtime check using the packaged Python:
 
 ```bash
-env -u PYTHONPATH -u PYTHONHOME PATH=/usr/bin:/bin:/usr/sbin:/sbin PYTHONNOUSERSITE=1 \
-  "desktop/dist/Call Note-darwin-arm64/Call Note.app/Contents/Resources/python/bin/python3.11" \
+env -u PYTHONPATH -u PYTHONHOME PATH=/usr/bin:/bin:/usr/sbin:/sbin PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 \
+  "desktop/dist/Call Note-darwin-arm64/Call Note.app/Contents/Resources/python/bin/python3.11" -B \
   scripts/bundle_smoke.py \
   "desktop/dist/Call Note-darwin-arm64/Call Note.app/Contents/Resources/service"
 ```

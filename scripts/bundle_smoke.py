@@ -5,6 +5,9 @@ import os
 import sys
 import tempfile
 
+sys.dont_write_bytecode=True
+cache=tempfile.TemporaryDirectory(prefix='call-note-smoke-cache-')
+os.environ.update(PYTHONDONTWRITEBYTECODE='1', FERMION_CACHE_DIR=cache.name+'/fermion', HF_HOME=cache.name+'/huggingface')
 service=Path(sys.argv[1]).resolve()
 sys.path.insert(0,str(service))
 os.environ.update(CALL_NOTE_MODEL=str(service/'models/model_phonon2_c4c_int6'),HF_HUB_OFFLINE='1',HF_HUB_DISABLE_TELEMETRY='1')
@@ -24,7 +27,7 @@ with tempfile.TemporaryDirectory(prefix='call-note-bundle-test-') as data:
     store.append(call['id'],'sample',0,result['audio_seconds'],result['text'])
     store.finish(call['id'],result['audio_seconds'])
     async def check():
-        server=StdioServerParameters(command=sys.executable,args=[str(service/'call_mcp.py')],env={**os.environ,'CALL_DESK_DATA':data})
+        server=StdioServerParameters(command=sys.executable,args=['-B',str(service/'call_mcp.py')],env={**os.environ,'CALL_DESK_DATA':data})
         async with Client(server) as client:
             response=await client.call_tool('get_call',{'call_id':call['id']})
             assert not response.is_error
