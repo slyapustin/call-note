@@ -142,3 +142,7 @@ $('calendar-disconnect').onclick=handle(async()=>{await window.callDesk.calendar
 $('calendar-events').onchange=()=>{selectedEvent=calendarEvents.find(e=>e.id===$('calendar-events').value)||null;if(selectedEvent)$('title').value=selectedEvent.title;};
 await handle(refreshCalendar)();
 setInterval(()=>{if(!capture&&$('setup').hidden===false)handle(refreshCalendar)();},60000);
+
+$('connect-assistants').onclick=handle(async()=>{const button=$('connect-assistants');button.disabled=true;try{$('connection-result').textContent=await window.callDesk.connectAssistants();}finally{button.disabled=false;}});
+
+$('updates').onclick=handle(()=>window.callDesk.updates());$('updates').textContent=`v${session.version} · Check for updates ↗`;

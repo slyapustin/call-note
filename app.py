@@ -53,9 +53,7 @@ class Engine:
             import fermion
             import mlx.core as mx
 
-            if not shutil.which("ffmpeg"):
-                raise RuntimeError("ffmpeg is missing. Install it with: brew install ffmpeg")
-            self.model = fermion.load_speech("phonon-2", quiet=False)
+            self.model = fermion.load_speech(os.environ.get("CALL_NOTE_MODEL", "phonon-2"), quiet=False)
             self.info = self.model.describe()
             self.info["device"] = mx.device_info()
             from fermion._speech.live import warm_up
@@ -67,7 +65,20 @@ class Engine:
             self.error = str(exc)
             self.status = "error"
 
+    def transcribe_wav(self, source: Path, hotwords: list[str]):
+        """Transcribe a known WAV fixture without an external decoder."""
+        started = time.perf_counter()
+        result = asdict(self.model.transcribe_detailed(str(source), hotwords=hotwords))
+        processing = time.perf_counter() - started
+        duration = result["audio_seconds"]
+        result.update(model="phonon-2", backend="mlx", processing_seconds=processing,
+                      conversion_seconds=0, model_load_seconds=self.load_seconds,
+                      realtime_factor=processing / duration, speed_x=duration / processing)
+        return result
+
     def transcribe(self, source: Path, hotwords: list[str]):
+        if not shutil.which("ffmpeg"):
+            raise HTTPException(503, "File import requires FFmpeg. Live recording and the bundled sample do not.")
         started = time.perf_counter()
         with tempfile.TemporaryDirectory(prefix="phonon-convert-") as directory:
             target = Path(directory) / "audio.wav"

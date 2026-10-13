@@ -80,7 +80,7 @@ async def demo():
         raise HTTPException(409, 'Engine is loading or busy.')
     engine.busy = True
     try:
-        result = await engine_call(engine.transcribe, ROOT / 'samples/long-clean.wav', [])
+        result = await engine_call(engine.transcribe_wav, ROOT / 'samples/long-clean.wav', [])
         call = store.create('Sample · Project briefing', 'sample')
         store.append(call['id'], 'sample', 0, result['audio_seconds'], result['text'])
         store.finish(call['id'], result['audio_seconds'])

@@ -11,7 +11,8 @@ import re
 import tomllib
 
 ROOT = Path(__file__).resolve().parent
-ENTRY = {'command': str(ROOT / '.venv/bin/python'), 'args': [str(ROOT / 'call_mcp.py')]}
+PYTHON = Path(os.environ.get('CALL_NOTE_PYTHON', ROOT / '.venv/bin/python'))
+ENTRY = {'command': str(PYTHON), 'args': [str(ROOT / 'call_mcp.py')]}
 
 
 def plans(home):
@@ -24,8 +25,11 @@ def plans(home):
         before=re.sub(r'(?ms)^\[mcp_servers\.calldesk\]\n.*?(?=^\[|\Z)', '', before)
         config=tomllib.loads(before)
     existing=config.get('mcp_servers',{}).get('call-note')
-    if existing and any(existing.get(k)!=v for k,v in ENTRY.items()):
-        raise ValueError('A different Codex call-note server already exists; no files changed.')
+    if existing and existing != ENTRY:
+        if set(existing) != set(ENTRY) or not (isinstance(existing.get('args'), list) and len(existing['args']) == 1 and isinstance(existing['args'][0], str) and existing['args'][0].endswith('/call_mcp.py')):
+            raise ValueError('A different Codex call-note server already exists; no files changed.')
+        before=re.sub(r'(?ms)^\[mcp_servers\.call-note\]\n.*?(?=^\[|\Z)', '', before)
+        existing=None
     if not existing:
         after=before.rstrip()+'\n\n[mcp_servers.call-note]\ncommand = '+json.dumps(ENTRY['command'])+'\nargs = '+json.dumps(ENTRY['args'])+'\n'
         tomllib.loads(after)
@@ -36,7 +40,9 @@ def plans(home):
         del config['mcpServers']['calldesk']
     existing=config.get('mcpServers',{}).get('call-note')
     if existing and existing!=ENTRY:
-        raise ValueError('A different Claude Desktop call-note server already exists; no files changed.')
+        if set(existing) != set(ENTRY) or not (isinstance(existing.get('args'), list) and len(existing['args']) == 1 and isinstance(existing['args'][0], str) and existing['args'][0].endswith('/call_mcp.py')):
+            raise ValueError('A different Claude Desktop call-note server already exists; no files changed.')
+        existing=None
     if not existing:
         config.setdefault('mcpServers',{})['call-note']=ENTRY
         changes.append((claude,json.dumps(config,indent=2)+'\n'))

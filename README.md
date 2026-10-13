@@ -4,37 +4,37 @@ Local call transcription for macOS, powered by Phonon-2, with a searchable call 
 
 **Developer preview:** Electron + Python, Apple Silicon macOS. Windows and outgoing virtual-microphone noise cancellation are planned. English speech only.
 
-## Set up on a Mac
+## Download and install
 
-Requires Apple Silicon, macOS 14.2+ for system audio, Python 3.11, Node.js and FFmpeg. The model downloads on first launch; subsequent transcription is local.
+Download the latest DMG from [Releases](https://github.com/slyapustin/call-note/releases/latest). Sign in to GitHub as an account with access to this private repository.
+
+Open the DMG, drag **Call Note** into **Applications**, and launch it there. Requires an Apple Silicon Mac and macOS 14.2 or later. Python, dependencies, the speech model, and a playable sample are included. No Homebrew or model download is needed for transcription.
+
+A release named `preview` has not completed Apple notarization; its release notes state the signing status. Signed and notarized builds are the intended distribution format.
+
+## Updates
+
+Choose **Call Note → Check for Updates** (also available beside the version in the sidebar). This opens the private GitHub releases page. Download the newer DMG, quit Call Note, and replace the app in Applications. Calls and Calendar settings remain in your user Library. Version 0.2 uses manual download and replacement; background download and automatic installation are not implemented.
+
+## Build from source
 
 ```bash
 git clone https://github.com/slyapustin/call-note.git
 cd call-note
-brew install python@3.11 ffmpeg node
+brew install python@3.11 ffmpeg node uv
 ./setup.sh
 ./make_sample.sh
-cd desktop
-npm ci
-npm run package:mac
-open "dist/Call Note-darwin-arm64/Call Note.app"
+npm ci --prefix desktop
+npm run package:mac --prefix desktop
 ```
 
-`setup.sh` uses `python3.11` by default; override `PYTHON_BIN` if needed. The pinned environment was tested with Python 3.11.17.
+`setup.sh` uses `python3.11` by default; override `PYTHON_BIN` if needed. The tested environment uses Python 3.11.17. Packaging requires the model cache populated by running the POC once, and downloads a portable Python runtime with `uv`. The packaged desktop app does not use FFmpeg; the browser upload POC does.
 
-The original browser speech POC, sample comparisons and benchmarks are documented in [docs/phonon-poc.md](docs/phonon-poc.md).
+See [release build instructions](docs/releases.md) for signing, notarization, and publishing, and [the original POC](docs/phonon-poc.md) for browser benchmarks.
 
 ## Desktop app
 
-A macOS Electron app now builds on the original browser POC. Open `desktop/dist/Call Note-darwin-arm64/Call Note.app`. The app starts its own authenticated loopback Python service on an available port, loads Phonon-2, and manages that service when the window closes.
-
-This is a **developer preview tied to this checkout**, not a standalone installer. Keep the project, `.venv`, model cache and Homebrew FFmpeg in place. It currently targets Apple Silicon macOS; system-audio capture requires macOS 14.2 or later. Windows packaging and inference backend selection remain future work.
-
-```bash
-cd desktop
-npm ci
-npm run package:mac
-```
+The app starts its own authenticated loopback service on an available port, loads the bundled Phonon-2 model, and stops that service when the app closes.
 
 Features:
 
@@ -70,7 +70,7 @@ Once connected, it refreshes the primary calendar, expands recurring events and 
 .venv/bin/python connect_mcp.py
 ```
 
-The installer adds `call-note` to `~/.codex/config.toml` and Claude Desktop's config, preserving existing settings and writing timestamped backups. Restart those clients to load it. For Claude Code, run:
+In the installed app, open **Connect your assistant → Connect Codex & Claude**. This adds `call-note` to `~/.codex/config.toml` and Claude Desktop's config, preserving existing settings and writing timestamped backups. Restart those clients to load it. For Claude Code, run:
 
 ```bash
 claude mcp add --transport stdio call-note -- /absolute/path/to/phonon-poc/.venv/bin/python /absolute/path/to/phonon-poc/call_mcp.py
@@ -86,7 +86,7 @@ Data: `~/Library/Application Support/CallDesk/calls.sqlite3`. Service logs: the 
 
 Fermion advertises a 164 MB download. The installed `model.fermion` in this checkout is 177,438,361 bytes (177.4 MB / 169.2 MiB). MLX expands weights at load; the download size is not a RAM estimate. The full Electron/Python installation is larger than the model.
 
-Model weights are CC BY 4.0, allowing commercial use with attribution and license/change notices. The inference package is Apache 2.0. Attribution and runtime notices are in `desktop/licenses`; preserve them in distributions. These licenses do not require opening Call Note's own source. Dependency notices for a future self-contained installer must also be bundled.
+Model weights are CC BY 4.0, allowing commercial use with attribution and license/change notices. The inference package is Apache 2.0. Attribution and runtime notices are in `desktop/licenses`; preserve them in distributions. These licenses do not require opening Call Note's own source. The bundled Python runtime and installed dependency distributions retain their license files.
 
 Sources: [Phonon-2 model card](https://huggingface.co/FermionResearch/Phonon-2), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0), [Google installed-app OAuth](https://developers.google.com/identity/protocols/oauth2/native-app), [Electron desktop capture](https://www.electronjs.org/docs/latest/api/desktop-capturer), [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
@@ -97,4 +97,4 @@ Sources: [Phonon-2 model card](https://huggingface.co/FermionResearch/Phonon-2),
 node --test desktop/calendar.test.cjs
 ```
 
-Tests cover persistence, search escaping, transcript/analysis separation, recovery, authenticated APIs, dual-source streaming and final flush, invalid frames, real MCP stdio discovery/read/write, config preservation, and calendar normalization/matching. The packaged app has transcribed and saved the 108-second synthetic sample using the real MLX model and played the sample audio. A 42-second live capture test verified separate microphone and system-audio transcripts and Stop & Save. Google sign-in, actual meeting-app sessions, and Windows still require live validation. The data folder and bundle ID retain their original CallDesk identifiers so preview upgrades preserve stored calls and permissions.
+Tests cover persistence, search escaping, transcript/analysis separation, recovery, authenticated APIs, dual-source streaming and final flush, invalid frames, real MCP stdio discovery/read/write, config preservation, and calendar normalization/matching. The standalone runtime passed an offline transcription and MCP smoke check without Homebrew on its launch path. The packaged app has transcribed and saved the 108-second synthetic sample using the real MLX model and played the sample audio. A 42-second live capture test verified separate microphone and system-audio transcripts and Stop & Save. Google sign-in, actual meeting-app sessions, and Windows still require live validation. The data folder and bundle ID retain their original CallDesk identifiers so preview upgrades preserve stored calls and permissions.

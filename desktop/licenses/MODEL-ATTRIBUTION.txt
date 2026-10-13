@@ -12,4 +12,4 @@ No endorsement by Fermion Research or NVIDIA is implied.
 
 The fermion-research inference package is Apache 2.0; its license and notices accompany this file.
 Electron and Chromium notices are included in the Electron distribution.
-This developer build uses dependencies from the project virtual environment; their individual license files remain in site-packages. A distributable installer must include the notices for all bundled dependencies, including its FFmpeg build.
+The standalone installer bundles Python and its dependency distributions with their license files in site-packages. No FFmpeg executable is included in the desktop installer.
