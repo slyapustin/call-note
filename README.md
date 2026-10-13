@@ -6,6 +6,10 @@
 
 Call Note transcribes both sides of your calls on your Mac. Find past conversations, add notes, and ask Codex or Claude to pull out decisions and next steps.
 
+![Call Note showing a sample transcript, searchable call library, and notes](docs/screenshots/sample-transcript.png)
+
+*A saved sample conversation. Transcription and your call library stay on your Mac.*
+
 ### [Download v0.2.2 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.2/Call-Note-0.2.2-macOS-arm64.dmg)
 
 Newest test build · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.2)
@@ -25,6 +29,8 @@ Newest test build · [Release notes](https://github.com/slyapustin/call-note/rel
 4. Choose **New call → Start call**. When finished, choose **Stop & save**.
 
 ## What you can do
+
+![Call Note setup with Calendar linking, microphone and system audio, and playable samples](docs/screenshots/call-setup.png)
 
 - **Read as you talk.** Live transcription of your microphone and the other side of a call.
 - **Find what mattered.** Search saved calls, add notes, or export the transcript.
