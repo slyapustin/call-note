@@ -16,5 +16,5 @@ packager({
   appBundleId:'local.calldesk.preview',appVersion:metadata.version,buildVersion:metadata.version,
   ignore:[/^\/dist/,/^\/ui/,/^\/runtime\.json/,/^\/google-oauth\.json/,/\.test\.cjs$/],
   extraResource:[path.join(__dirname,'app-update.yml'),path.join(root,'.build/bundle/python'),path.join(root,'.build/bundle/service'),...(fs.existsSync(googleOAuth)?[googleOAuth]:[])],
-  extendInfo:{LSMinimumSystemVersion:'14.2',NSMicrophoneUsageDescription:'Call Note transcribes your microphone locally when you start a call.',NSAudioCaptureUsageDescription:'Call Note transcribes the other side of your calls using system audio.',NSScreenCaptureUsageDescription:'Call Note uses system capture to hear call audio. Video is never stored.'}
+  extendInfo:{NSUserNotificationAlertStyle:'alert',LSMinimumSystemVersion:'14.2',NSMicrophoneUsageDescription:'Call Note transcribes your microphone locally when you start a call.',NSAudioCaptureUsageDescription:'Call Note transcribes the other side of your calls using system audio.',NSScreenCaptureUsageDescription:'Call Note uses system capture to hear call audio. Video is never stored.'}
 }).then(paths=>console.log(paths.join('\n'))).catch(error=>{console.error(error);process.exitCode=1;});

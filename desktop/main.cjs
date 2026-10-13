@@ -6,7 +6,7 @@ const path = require('node:path');
 const net = require('node:net');
 app.setName('Call Note');
 app.setPath('userData', path.join(app.getPath('appData'), 'CallDesk'));
-let calendar, updates, callTray;
+let calendar, updates, callTray, reminders;
 let window, service, quitting = false, recording = false;
 const token = randomBytes(32).toString('hex');
 let origin;
@@ -33,7 +33,17 @@ app.whenReady().then(async () => {
   const data = app.getPath('userData');
   const {GoogleCalendar} = require('./calendar.cjs');
   calendar = new GoogleCalendar({directory:data,safeStorage,shell,clientFile:path.join(app.isPackaged?process.resourcesPath:__dirname,'google-oauth.json')});
-  for (const action of ['status','connect','events','disconnect']) ipcMain.handle('calendar:'+action, event=>{if(!trusted(event))throw Error('Untrusted window');return calendar[action]();});
+  for (const action of ['status','connect','events','disconnect']) ipcMain.handle('calendar:'+action, async event=>{
+    if(!trusted(event))throw Error('Untrusted window');
+    if(action==='events')return reminders.refresh();
+    if(action==='disconnect'){
+      reminders.stop();await reminders.pending?.catch(()=>{});
+      try {await calendar.disconnect();return {connected:false};} finally {reminders.reset();reminders.start();}
+    }
+    const result=await calendar[action]();
+    if(action==='connect')await reminders.refresh();
+    return result;
+  });
   fs.mkdirSync(data, {recursive:true, mode:0o700});
   const {MacUpdater} = require('electron-updater');
   const {Updates} = require('./updates.cjs');
@@ -82,10 +92,24 @@ app.whenReady().then(async () => {
     if (!quitting) {event.preventDefault();window.hide();}
   });
   const {CallTray}=require('./tray.cjs');
-  const {Tray,nativeImage}=require('electron');
+  const {Tray,nativeImage,Notification,powerMonitor}=require('electron');
+  const reminderAction=action=>Promise.resolve().then(action).catch(()=>dialog.showErrorBox('Call Note Calendar','Could not complete this action. Open Call Note and try again.'));
   callTray=new CallTray({Tray,Menu,nativeImage,version:app.getVersion(),show:showWindow,
+    join:key=>reminderAction(()=>reminders.join(key)),setReminder:seconds=>reminderAction(()=>reminders.setLead(seconds)),
     start:()=>{showWindow();window.webContents.send('tray:start');},
     stop:()=>window.webContents.send('tray:stop'),quit:()=>app.quit()});
+  const {MeetingReminders}=require('./meeting-reminders.cjs');
+  reminders=new MeetingReminders({loadEvents:()=>calendar.events(),onChange:value=>callTray.setMeetings(value),openExternal:url=>shell.openExternal(url),show:showWindow,
+    settingsFile:path.join(data,'meeting-reminders.json'),
+    notify:({event,body,canJoin,activate})=>{
+      if(!Notification.isSupported())return;
+      const notification=new Notification({title:event.title,body,actions:[{type:'button',text:canJoin?'Join call':'Open Call Note'}]});
+      let activated=false;const open=()=>{if(activated)return;activated=true;reminderAction(activate);};
+      notification.on('click',open);notification.on('action',open);notification.on('failed',()=>{});notification.show();
+      return ()=>notification.close();
+    }});
+  powerMonitor.on('suspend',()=>reminders.reset());
+  powerMonitor.on('resume',async()=>{await reminders.pending?.catch(()=>{});reminders.refresh().catch(()=>{});});
   ipcMain.on('tray:state',(event,value)=>{if(trusted(event))callTray.update(value);});
   window.webContents.on('render-process-gone',()=>{recording=false;callTray.update({phase:'idle',engine:'error'});});
   let ready = false;
@@ -96,6 +120,7 @@ app.whenReady().then(async () => {
   if (!ready) { dialog.showErrorBox('Call Note could not start', `Check ${path.join(data,'service.log')}`); app.quit(); return; }
   await window.loadURL(origin);
   updates.start();
+  reminders.start();
 });
 require('electron').autoUpdater.on('before-quit-for-update',()=>{quitting=true;service?.kill('SIGTERM');});
 app.on('window-all-closed', () => app.quit());
@@ -104,5 +129,5 @@ app.on('before-quit', event => {
     const choice=dialog.showMessageBoxSync(window,{type:'question',buttons:['Keep recording','Quit and end call'],defaultId:0,cancelId:0,message:'A call is being transcribed.',detail:'Quitting saves finalized text and marks the call interrupted.'});
     if(choice===0){event.preventDefault();return;}
   }
-  quitting=true;service?.kill('SIGTERM');
+  quitting=true;reminders?.stop();service?.kill('SIGTERM');
 });

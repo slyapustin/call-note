@@ -9,8 +9,9 @@ function presentation(state) {
     canStart:state.phase==='idle'&&state.engine==='ready'&&!state.busy, canStop:state.phase==='recording'};
 }
 class CallTray {
-  constructor({Tray, Menu, nativeImage, show, start, stop, quit, version}) {
-    this.Menu=Menu;this.actions={show,start,stop,quit};this.version=version;
+  constructor({Tray, Menu, nativeImage, show, start, stop, quit, join, setReminder, version}) {
+    this.Menu=Menu;this.actions={show,start,stop,quit,join,setReminder};this.version=version;
+    this.meetings={events:[],leadSeconds:60};
     this.state={phase:'idle',engine:'loading',busy:false,seconds:0,microphone:false,system:false};
     const icon=nativeImage.createFromPath(path.join(__dirname,'assets/callNoteTemplate.png'));
     icon.setTemplateImage(true);
@@ -26,8 +27,23 @@ class CallTray {
     if (['loading','ready','error'].includes(value.engine)) this.state.engine=value.engine;
     if (Number.isFinite(value.seconds)) this.state.seconds=Math.max(0,Math.floor(value.seconds));
     const view=presentation(this.state);
-    this.tray.setTitle(view.title,{fontType:'monospacedDigit'});
-    this.tray.setToolTip(`Call Note — ${view.status}`);
+    this.tray.setTitle(view.title||(this.state.phase==='idle'?this.meetings.title||'':''),{fontType:'monospacedDigit'});
+    const next=this.meetings.events[0];
+    this.tray.setToolTip(`Call Note — ${view.status}${next?`\n${next.title} · ${next.timing}`:''}`);
+  }
+  setMeetings(value) {this.meetings=value;this.update({});}
+  meetingMenu() {
+    return [
+      {label:'Calendar',enabled:false},
+      ...this.meetings.events.map(event=>({label:`${event.timing} · ${event.title.replace(/[\r\n]/g,' ').slice(0,80)}`,submenu:[
+        {label:new Date(event.start).toLocaleString(),enabled:false},
+        {label:event.canJoin?'Join call':'No video link in this event',enabled:event.canJoin,click:()=>this.actions.join?.(event.key)},
+        {label:'Open Call Note',click:this.actions.show}
+      ]})),
+      ...(!this.meetings.events.length?[{label:this.meetings.unavailable?'Calendar unavailable — open Call Note':this.meetings.connected?'No upcoming meetings':'Connect Google Calendar in Call Note',enabled:false}]:[]),
+      {label:'Meeting reminder',submenu:[{label:'1 minute before',value:60},{label:'30 seconds before',value:30},{label:'Off',value:0}].map(option=>({label:option.label,type:'radio',checked:this.meetings.leadSeconds===option.value,click:()=>this.actions.setReminder?.(option.value)}))},
+      {type:'separator'}
+    ];
   }
   menu() {
     const view=presentation(this.state);
@@ -36,6 +52,7 @@ class CallTray {
       {label:'Call Note',enabled:false},{label:view.status,enabled:false},
       ...(this.state.phase==='recording'?[{label:sources||'Capturing audio',enabled:false}]:[]),
       {type:'separator'},
+      ...this.meetingMenu(),
       {label:'Open Call Note',click:this.actions.show},
       {label:'Start new call',enabled:view.canStart,click:()=>{if(!presentation(this.state).canStart)return;this.update({phase:'preparing'});this.actions.start();}},
       {label:'Stop & save call',enabled:view.canStop,click:()=>{if(!presentation(this.state).canStop)return;this.update({phase:'saving'});this.actions.stop();}},

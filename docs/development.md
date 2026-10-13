@@ -16,6 +16,10 @@ A release named `preview` or `test` may not have completed Apple notarization; i
 
 Call Note stays in the macOS menu bar when you close its window. The menu shows engine readiness, active audio sources, and recording time, with actions to start a call, stop and save, or reopen the window. Choose **Quit Call Note** to fully exit; quitting during a call asks for confirmation.
 
+With Google Calendar connected, the menu lists up to five active or upcoming meetings and offers **Join call** when an event includes an HTTPS video link. A countdown appears in the menu bar during the 15 minutes before the next meeting; an active transcription keeps its recording timer. **Meeting reminder** lets you choose **1 minute before** (default), **30 seconds before**, or **Off**. A macOS notification offers the same join action. Joining opens the meeting link; recording still starts manually.
+
+Calendar checks run once a minute in the main process, including while the window is closed, and refresh after wake. Notifications need Call Note running and macOS notifications enabled; Focus settings can suppress them. Reminders are deduplicated across app restarts. Changes or cancellations are applied on the next successful refresh, and failed refreshes clear stale reminders. Only the primary Google calendar is read.
+
 ## Updates
 
 Call Note checks automatically after launch and every four hours, downloads newer stable releases in the background, and installs on quit. Test releases require manual installation. Until a stable release includes the complete update package, checks report that automatic-update packages are unavailable and offer **View downloads**. No GitHub login is needed with public releases. The sidebar shows only the installed version. **Call Note → Check for Updates** remains available for an optional manual check or **Restart & install**.
