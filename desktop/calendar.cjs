@@ -15,13 +15,20 @@ function nearestEvent(events, now=Date.now()) {
     .sort((a,b)=>Math.abs(Date.parse(a.start)-now)-Math.abs(Date.parse(b.start)-now))[0]||null;
 }
 class GoogleCalendar {
-  constructor({directory,safeStorage,dialog,shell,getWindow}) {Object.assign(this,{safeStorage,dialog,shell,getWindow});this.file=path.join(directory,'google-calendar.enc');this.connecting=false;}
+  constructor({directory,safeStorage,shell,clientFile}) {Object.assign(this,{safeStorage,shell,clientFile});this.file=path.join(directory,'google-calendar.enc');this.connecting=false;}
+  bundledClient() {
+    if(!this.clientFile||!fs.existsSync(this.clientFile))return null;
+    const config=JSON.parse(fs.readFileSync(this.clientFile,'utf8'));
+    const client=config.installed||config;
+    if(typeof client.client_id!=='string'||!client.client_id.endsWith('.apps.googleusercontent.com')||typeof client.client_secret!=='string')throw Error('Google Calendar sign-in is not configured correctly in this build.');
+    return {client_id:client.client_id,client_secret:client.client_secret};
+  }
   read() {return fs.existsSync(this.file)?JSON.parse(this.safeStorage.decryptString(fs.readFileSync(this.file))):{};}
   write(data) {
     if(!this.safeStorage.isEncryptionAvailable()||this.safeStorage.getSelectedStorageBackend?.()==='basic_text')throw Error('Secure OS credential storage is unavailable.');
     const temp=this.file+'.tmp';fs.writeFileSync(temp,this.safeStorage.encryptString(JSON.stringify(data)),{mode:0o600});fs.renameSync(temp,this.file);
   }
-  status() {try{return {connected:!!this.read().tokens?.refresh_token,connecting:this.connecting};}catch{return {connected:false,error:'Calendar credentials could not be unlocked.'};}}
+  status() {try{const stored=this.read();return {connected:!!stored.tokens?.refresh_token,available:!!(stored.client||this.bundledClient()),connecting:this.connecting};}catch{return {connected:false,error:'Calendar sign-in is unavailable. Try reopening Call Note.'};}}
   async tokenRequest(params) {
     const response=await fetch('https://oauth2.googleapis.com/token',{method:'POST',body:new URLSearchParams(params),signal:AbortSignal.timeout(20000)});
     const tokens=await response.json();if(!response.ok)throw Error('Google authorization failed. Reconnect Calendar and check your OAuth client settings.');return {...tokens,expires_at:Date.now()+tokens.expires_in*1000};
@@ -30,16 +37,8 @@ class GoogleCalendar {
     if(this.connecting)throw Error('Calendar sign-in is already open.');this.connecting=true;
     try {
       let stored=this.read();
-      if(!stored.client) {
-        const choice=await this.dialog.showMessageBox(this.getWindow(),{type:'info',buttons:['Choose OAuth JSON','Cancel'],defaultId:0,cancelId:1,message:'Connect Google Calendar',detail:'This developer preview needs a Google Cloud OAuth client of type Desktop app, with Calendar API enabled. Select its downloaded JSON file, then sign in with Google. Call Note requests read-only event access.'});
-        if(choice.response!==0)return {connected:false};
-        const selection=await this.dialog.showOpenDialog(this.getWindow(),{title:'Select Google Desktop OAuth client JSON',properties:['openFile'],filters:[{name:'Google OAuth client',extensions:['json']}]});
-        if(selection.canceled)return {connected:false};
-        const file=selection.filePaths[0];if(fs.statSync(file).size>65536)throw Error('OAuth JSON is too large.');
-        const client=JSON.parse(fs.readFileSync(file,'utf8')).installed;
-        if(!client||typeof client.client_id!=='string'||!client.client_id.endsWith('.apps.googleusercontent.com'))throw Error('Select a Google OAuth Desktop app JSON file.');
-        stored={client:{client_id:client.client_id,client_secret:client.client_secret||''}};
-      }
+      if(!stored.client)stored={...stored,client:this.bundledClient()};
+      if(!stored.client)throw Error('Google Calendar sign-in is not available in this build yet. Your calls still work without Calendar.');
       if(!this.safeStorage.isEncryptionAvailable())throw Error('Secure OS credential storage is unavailable.');
       const verifier=randomBytes(48).toString('base64url'),state=randomBytes(32).toString('hex');
       const server=http.createServer();
@@ -68,7 +67,7 @@ class GoogleCalendar {
     } finally {this.connecting=false;}
   }
   async events() {
-    let stored=this.read();if(!stored.tokens?.refresh_token)return {connected:false,events:[],suggested:null};
+    let stored=this.read();if(!stored.tokens?.refresh_token)return {...this.status(),events:[],suggested:null};
     if(stored.tokens.expires_at<Date.now()+60000) {
       const tokens=await this.tokenRequest({...stored.client,refresh_token:stored.tokens.refresh_token,grant_type:'refresh_token'});
       stored.tokens={...stored.tokens,...tokens};this.write(stored);

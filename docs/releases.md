@@ -1,12 +1,13 @@
 # macOS releases
 
-Call Note is currently Apple Silicon only, macOS 14.2+. The app uses electron-updater with public GitHub Releases, without tokens or login. The release repository must be public before distribution. No credentials are embedded in the build.
+Call Note is currently Apple Silicon only, macOS 14.2+. The app uses electron-updater with public GitHub Releases, without GitHub tokens or login. The release repository must be public before distribution. Signing credentials and user OAuth tokens are never embedded in the build. A public installed-app Google OAuth client may be bundled for Calendar sign-in.
 
 ## Prepare and verify
 
 1. Update `desktop/package.json` and its lockfile version.
 2. Install the pinned Python environment with `./setup.sh`, generate samples with `./make_sample.sh`, and load Phonon-2 once to populate `.cache/fermion`.
 3. Run `.venv/bin/python -m pytest -q` and `node --test desktop/*.test.cjs`.
+   For Calendar sign-in, provide the release owner's Desktop OAuth client in the ignored `desktop/google-oauth.json` file. See [Google Calendar setup](development.md#google-calendar).
 4. Run `npm ci --prefix desktop`, then `npm run package:mac --prefix desktop`.
 
 The build bundles portable CPython 3.13.16, tested site-packages, local model weights, service/UI code, sample audio, and license notices. It audits native linkage for Homebrew dependencies. Build on Apple Silicon.

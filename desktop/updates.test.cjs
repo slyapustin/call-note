@@ -41,6 +41,17 @@ test('network failure does not expose tokens and can be retried',async t=>{
   assert(!JSON.stringify(f.updates.status()).includes('secret'));
   assert.equal(f.updates.busy,false);
 });
+test('a missing stable update package offers manual downloads without claiming a network failure',async t=>{
+  const f=fixture(t);
+  f.updater.checkForUpdates=async()=>{throw Object.assign(Error('404 latest-mac.yml'),{code:'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND'});};
+  await f.updates.check();
+  assert.equal(f.updates.status().phase,'unavailable');
+  assert.match(f.updates.status().message,/View downloads/);
+  assert.equal(f.updates.busy,false);
+  f.updater.checkForUpdates=async()=>f.updater.emit('update-not-available');
+  await f.updates.check();
+  assert.equal(f.updates.status().phase,'current');
+});
 
 test('development builds do not check or download updates',async t=>{
   const f=fixture(t);f.updates.enabled=false;

@@ -151,10 +151,11 @@ await library();await status();setInterval(status,5000);
 async function refreshCalendar() {
   const state=await window.callDesk.calendarEvents();calendarEvents=state.events||[];
   $('calendar-connect').hidden=state.connected;$('calendar-refresh').hidden=!state.connected;$('calendar-disconnect').hidden=!state.connected;$('calendar-picker').hidden=!state.connected;
+  $('calendar-connect').disabled=state.available===false;
   const select=$('calendar-events');select.replaceChildren(new Option('No linked meeting',''),...calendarEvents.map(event=>new Option(`${new Date(event.start).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · ${event.title}`,event.id)));
   select.value=state.suggested||'';selectedEvent=calendarEvents.find(e=>e.id===select.value)||null;
   if(selectedEvent)$('title').value=selectedEvent.title;
-  $('calendar-status').textContent=state.connected?'Primary calendar · read-only':'Use meeting details automatically';
+  $('calendar-status').textContent=state.connected?'Primary calendar · read-only':state.available===false?'Google sign-in is not available in this build yet.':'Use meeting details automatically';
 }
 $('calendar-connect').onclick=handle(async()=>{$('calendar-connect').disabled=true;try{await window.callDesk.calendarConnect();await refreshCalendar();}finally{$('calendar-connect').disabled=false;}});
 $('calendar-refresh').onclick=handle(refreshCalendar);
@@ -178,5 +179,6 @@ window.callDesk.onUpdateOpen(handle(openUpdates));
 window.callDesk.onUpdateState(renderUpdate);
 $('update-close').onclick=()=>$('update-dialog').close();
 $('update-check').onclick=updateAction(()=>window.callDesk.updateCheck());
+$('update-downloads').onclick=updateAction(()=>window.callDesk.updateDownloads());
 $('update-install').onclick=updateAction(()=>window.callDesk.updateInstall());
 renderUpdate(await window.callDesk.updateStatus());

@@ -61,9 +61,10 @@ One-time developer setup:
 1. In a Google Cloud project, enable Google Calendar API.
 2. Configure the OAuth consent screen, adding your account as a test user if the app is in testing mode.
 3. Create an OAuth client of type **Desktop app** and download its JSON.
-4. In Call Note, choose **Connect Google Calendar**, select that JSON and complete Google sign-in.
+4. Save the downloaded JSON as `desktop/google-oauth.json` before packaging. It is ignored by Git and copied into the app's resources.
+5. In Call Note, choose **Connect Google Calendar** and complete Google sign-in. Users do not need to create a project or select a JSON file.
 
-No Google OAuth client is bundled in this repository. The connection in ChatGPT/Codex does not give the standalone app credentials. Sign-in and live Calendar reads remain unverified until an OAuth client is supplied.
+No Google OAuth client is committed to this repository. Builds without a client disable Calendar sign-in, while existing encrypted connections remain usable. An installed-app OAuth client is distributed with the binary and is not a confidential server credential; user access and refresh tokens remain in encrypted local storage. The connection in ChatGPT/Codex does not authorize the standalone app. Testing-mode clients require each user's account on the test-user list; public access requires completing Google's applicable publishing and verification steps.
 
 Once connected, it refreshes the primary calendar, expands recurring events and automatically matches an active meeting or one starting within 15 minutes. Canceled, self-declined and all-day events are excluded. Titles, scheduled times, attendees and video links are attached to the call, available to MCP, and can be used for analysis. It does not write to Google Calendar or upload audio/transcripts there. Matching is a time-based heuristic; overlapping events may need correction. Additional calendars and actual call-join detection are not implemented yet.
 

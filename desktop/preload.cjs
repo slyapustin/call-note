@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('callDesk', {
   updateStatus:()=>ipcRenderer.invoke('updates:status'),
   updateCheck:()=>ipcRenderer.invoke('updates:check'),
   updateInstall:()=>ipcRenderer.invoke('updates:install'),
+  updateDownloads:()=>ipcRenderer.invoke('updates:downloads'),
   onUpdateState:callback=>ipcRenderer.on('updates:state',(_event,state)=>callback(state)),
   onUpdateOpen:callback=>ipcRenderer.on('updates:open',()=>callback()),
   menuState:state=>ipcRenderer.send('tray:state',state),

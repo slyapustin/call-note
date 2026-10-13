@@ -19,8 +19,9 @@ app.on('second-instance', showWindow);
 app.on('activate', showWindow);
 function trusted(event) { return event.sender === window?.webContents && event.senderFrame?.url.startsWith(origin + '/'); }
 app.whenReady().then(async () => {
-  const updatesURL='https://github.com/slyapustin/call-note/releases/latest';
+  const updatesURL='https://github.com/slyapustin/call-note/releases';
   const openReleases=()=>shell.openExternal(updatesURL);
+  ipcMain.handle('updates:downloads', event=>{if(!trusted(event))throw Error('Untrusted window');return openReleases();});
   const openUpdates=()=>{window?.show();window?.webContents.send('updates:open');};
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {label:'Call Note',submenu:[{role:'about'},{label:'Check for Updates…',click:openUpdates},{type:'separator'},{role:'services'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{role:'quit'}]},
@@ -31,7 +32,7 @@ app.whenReady().then(async () => {
   origin = `http://127.0.0.1:${port}`;
   const data = app.getPath('userData');
   const {GoogleCalendar} = require('./calendar.cjs');
-  calendar = new GoogleCalendar({directory:data,safeStorage,dialog,shell,getWindow:()=>window});
+  calendar = new GoogleCalendar({directory:data,safeStorage,shell,clientFile:path.join(app.isPackaged?process.resourcesPath:__dirname,'google-oauth.json')});
   for (const action of ['status','connect','events','disconnect']) ipcMain.handle('calendar:'+action, event=>{if(!trusted(event))throw Error('Untrusted window');return calendar[action]();});
   fs.mkdirSync(data, {recursive:true, mode:0o700});
   const {MacUpdater} = require('electron-updater');
