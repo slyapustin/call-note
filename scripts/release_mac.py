@@ -35,7 +35,7 @@ def main():
     sign=['codesign','--force','--sign',identity]
     if args.identity:sign+=['--timestamp','--options','runtime']
     entitlements=ROOT/'scripts/entitlements.mac.plist'
-    fermion_native=app/'Contents/Resources/python/lib/python3.11/site-packages/fermion/_speech/_native_mlx'
+    fermion_native=app/'Contents/Resources/python/lib/python3.13/site-packages/fermion/_speech/_native_mlx'
     pins=fermion_native/'SHA256SUMS.txt'
     library=fermion_native/'libphonon_mlx-macos-arm64.dylib'
     original_pin=pins.read_text().split()[0]

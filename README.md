@@ -21,14 +21,14 @@ Choose **Call Note → Check for Updates** (also available beside the version in
 ```bash
 git clone https://github.com/slyapustin/call-note.git
 cd call-note
-brew install python@3.11 ffmpeg node uv
+brew install python@3.13 ffmpeg node uv
 ./setup.sh
 ./make_sample.sh
 npm ci --prefix desktop
 npm run package:mac --prefix desktop
 ```
 
-`setup.sh` uses `python3.11` by default; override `PYTHON_BIN` if needed. The tested environment uses Python 3.11.17. Packaging requires the model cache populated by running the POC once, and downloads a portable Python runtime with `uv`. The packaged desktop app does not use FFmpeg; the browser upload POC does.
+`setup.sh` uses `python3.13` by default; override `PYTHON_BIN` if needed. The tested environment uses Python 3.13.16. If `.venv` was created with Python 3.11, rename it (for example, `mv .venv .venv.python311`) and rerun setup; the existing model cache is retained. Packaging requires the model cache populated by running the POC once, and downloads a portable Python runtime with `uv`. The packaged desktop app does not use FFmpeg; the browser upload POC does.
 
 See [release build instructions](docs/releases.md) for signing, notarization, and publishing, and [the original POC](docs/phonon-poc.md) for browser benchmarks.
 

@@ -9,7 +9,7 @@ Call Note is currently Apple Silicon only, macOS 14.2+. The private repository o
 3. Run `.venv/bin/python -m pytest -q` and `node --test desktop/calendar.test.cjs`.
 4. Run `npm ci --prefix desktop`, then `npm run package:mac --prefix desktop`.
 
-The build bundles portable CPython 3.11.17, tested site-packages, local model weights, service/UI code, sample audio, and license notices. It audits native linkage for Homebrew dependencies. Build on Apple Silicon.
+The build bundles portable CPython 3.13.16, tested site-packages, local model weights, service/UI code, sample audio, and license notices. It audits native linkage for Homebrew dependencies. Build on Apple Silicon.
 
 ## Sign and notarize
 
@@ -28,7 +28,7 @@ Run the bundled-runtime check using the packaged Python:
 
 ```bash
 env -u PYTHONPATH -u PYTHONHOME PATH=/usr/bin:/bin:/usr/sbin:/sbin PYTHONNOUSERSITE=1 PYTHONDONTWRITEBYTECODE=1 \
-  "desktop/dist/Call Note-darwin-arm64/Call Note.app/Contents/Resources/python/bin/python3.11" -B \
+  "desktop/dist/Call Note-darwin-arm64/Call Note.app/Contents/Resources/python/bin/python3.13" -B \
   scripts/bundle_smoke.py \
   "desktop/dist/Call Note-darwin-arm64/Call Note.app/Contents/Resources/service"
 ```

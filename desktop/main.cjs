@@ -12,7 +12,7 @@ const token = randomBytes(32).toString('hex');
 let origin;
 const bundled = app.isPackaged && fs.existsSync(path.join(process.resourcesPath, 'service'));
 const root = bundled ? path.join(process.resourcesPath, 'service') : path.resolve(__dirname, '..');
-const python = bundled ? path.join(process.resourcesPath, 'python/bin/python3.11') : path.join(root, '.venv/bin/python');
+const python = bundled ? path.join(process.resourcesPath, 'python/bin/python3.13') : path.join(root, '.venv/bin/python');
 if (!app.requestSingleInstanceLock()) app.quit();
 app.on('second-instance', () => { window?.show(); window?.focus(); });
 function trusted(event) { return event.sender === window?.webContents && event.senderFrame?.url.startsWith(origin + '/'); }

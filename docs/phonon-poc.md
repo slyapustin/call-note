@@ -81,10 +81,10 @@ Detailed results are written to `test-results/benchmark.json`. File transcriptio
 
 ## Install from scratch
 
-Requirements: Apple silicon Mac with Metal access, Python 3.11+ (3.11 tested), FFmpeg, and internet for installation/model download. `requirements.txt` pins the complete tested environment; it includes upstream dependencies beyond the 164 MB model. Older macOS/Python combinations have not been validated.
+Requirements: Apple silicon Mac with Metal access, Python 3.13, FFmpeg, and internet for installation/model download. `requirements.txt` pins the complete tested environment; it includes upstream dependencies beyond the 164 MB model. Older macOS/Python combinations have not been validated.
 
 ```sh
-brew install python@3.11 ffmpeg  # only if missing
+brew install python@3.13 ffmpeg  # only if missing
 ./setup.sh
 ./make_sample.sh
 ./run.sh

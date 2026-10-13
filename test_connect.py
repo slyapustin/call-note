@@ -18,11 +18,12 @@ def test_connections_preserve_existing_settings(tmp_path):
 
 def test_reinstall_updates_only_call_note(tmp_path, monkeypatch):
     import connect_mcp
+    monkeypatch.setattr(connect_mcp,'ENTRY',{'command':'/Applications/Call Note.app/Contents/Resources/python/bin/python3.11','args':['-B','/Applications/Call Note.app/Contents/Resources/service/call_mcp.py']})
     original=plans(tmp_path)
     for path,text in original:
         path.parent.mkdir(parents=True,exist_ok=True)
         path.write_text(text)
-    updated={'command':'/Applications/Call Note.app/Contents/Resources/python/bin/python3.11','args':['/Applications/Call Note.app/Contents/Resources/service/call_mcp.py']}
+    updated={'command':'/Applications/Call Note.app/Contents/Resources/python/bin/python3.13','args':['-B','/Applications/Call Note.app/Contents/Resources/service/call_mcp.py']}
     monkeypatch.setattr(connect_mcp,'ENTRY',updated)
     changes=plans(tmp_path)
     assert len(changes)==2

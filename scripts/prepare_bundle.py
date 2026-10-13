@@ -9,9 +9,10 @@ import sys
 ROOT=Path(__file__).resolve().parents[1]
 BUILD=ROOT/'.build'
 BUNDLE=BUILD/'bundle'
-PYTHON_VERSION='3.11.17'
+PYTHON_VERSION='3.13.16'
 
 def main():
+    if sys.version_info[:2] != (3, 13):raise SystemExit('Build with the Python 3.13 project environment.')
     if sys.platform!='darwin':raise SystemExit('Build the macOS release on a Mac.')
     python=BUILD/'python'/f'cpython-{PYTHON_VERSION}-macos-aarch64-none'
     if not python.exists():
@@ -20,8 +21,8 @@ def main():
     target=BUNDLE/'python'
     if target.exists():shutil.rmtree(target)
     shutil.copytree(python,target,symlinks=False,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
-    source=ROOT/'.venv/lib/python3.11/site-packages'
-    packages=target/'lib/python3.11/site-packages'
+    source=ROOT/'.venv/lib/python3.13/site-packages'
+    packages=target/'lib/python3.13/site-packages'
     shutil.copytree(source,packages,dirs_exist_ok=True,symlinks=False,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
     service=BUNDLE/'service'
     if service.exists():shutil.rmtree(service)
@@ -44,7 +45,7 @@ def main():
         if path.is_symlink():
             if not path.resolve().is_relative_to(target.resolve()):external.append(str(path)+' -> '+str(path.resolve()))
             continue
-        if not path.is_file() or path.suffix not in ('.so','.dylib') and path.name!='python3.11':continue
+        if not path.is_file() or path.suffix not in ('.so','.dylib') and path.name!='python3.13':continue
         result=subprocess.run(['/usr/bin/otool','-L',str(path)],capture_output=True,text=True)
         if result.returncode:continue
         identity=subprocess.run(['/usr/bin/otool','-D',str(path)],capture_output=True,text=True).stdout.splitlines()[1:]
