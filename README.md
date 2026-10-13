@@ -6,7 +6,7 @@
 
 Call Note transcribes both sides of your calls on your Mac. Find past conversations, add notes, and ask Codex or Claude to pull out decisions and next steps.
 
-### [Download v0.2.2 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.2/Call-Note-0.2.2-macOS-arm64-test.dmg)
+### [Download v0.2.2 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.2/Call-Note-0.2.2-macOS-arm64.dmg)
 
 Newest test build · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.2)
 
