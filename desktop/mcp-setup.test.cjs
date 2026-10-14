@@ -29,9 +29,10 @@ test('TOML and JSON parse to original paths containing spaces, quotes, backslash
     assert.deepEqual(JSON.parse(setup.clients[1].snippet), {mcpServers:{'call-note':{command:python, args:['-B', server]}}});
     return {snippet:setup.clients[0].snippet, expected:{mcp_servers:{'call-note':{command:python, args:['-B', server]}}}};
   });
-  const python = path.resolve(__dirname, process.platform==='win32'?'../.venv/Scripts/python.exe':'../.venv/bin/python');
+  const venv = path.resolve(__dirname, process.platform==='win32'?'../.venv/Scripts/python.exe':'../.venv/bin/python');
+  const python = fs.existsSync(venv)?venv:(process.platform==='win32'?'python':'python3');
   const program = 'import json,sys,tomllib\nfor case in json.load(sys.stdin):\n assert tomllib.loads(case["snippet"]) == case["expected"]\nprint("valid")';
-  assert.equal(execFileSync(python, ['-B', '-c', program], {input:JSON.stringify(cases), encoding:'utf8'}).trim(), 'valid');
+  assert.equal(execFileSync(python, ['-X', 'utf8', '-B', '-c', program], {input:JSON.stringify(cases), encoding:'utf8'}).trim(), 'valid');
 });
 
 test('instruction generation has no filesystem or subprocess capability', () => {

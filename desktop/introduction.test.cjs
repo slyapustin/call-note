@@ -17,7 +17,7 @@ test('fresh installation keeps the tour pending after the service creates its da
   assert.deepEqual(introduction.status(), {kind:'tour', version:'0.2.5'});
   fs.writeFileSync(path.join(options.directory, 'calls.sqlite3'), 'service-created database');
   assert.deepEqual(new Introduction(options).status(), {kind:'tour', version:'0.2.5'});
-  assert.equal(fs.statSync(path.join(options.directory, 'introduction.json')).mode & 0o777, 0o600);
+  if(process.platform!=='win32')assert.equal(fs.statSync(path.join(options.directory, 'introduction.json')).mode & 0o777, 0o600);
 });
 
 test('existing installations see news, and dismissal survives restart', t => {
