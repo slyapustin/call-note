@@ -10,12 +10,13 @@ if(fs.existsSync(googleOAuth)) {
   new GoogleCalendar({directory:__dirname,clientFile:googleOAuth}).bundledClient();
 }
 execFileSync(path.join(root, '.venv/bin/python'), [path.join(root,'scripts/prepare_bundle.py')], {stdio:'inherit'});
+execFileSync(path.join(root, '.venv/bin/python'), [path.join(root,'scripts/build_audio_activity.py')], {stdio:'inherit'});
 packager({
   dir:__dirname,out:process.env.CALL_NOTE_PACKAGE_OUT || path.join(__dirname,'dist'),name:'Call Note',platform:'darwin',arch:'arm64',overwrite:true,
   icon:path.join(__dirname,'assets/call-note.icns'),
   appBundleId:'local.calldesk.preview',appVersion:metadata.version,buildVersion:metadata.version,
-  ignore:[/^\/dist/,/^\/ui/,/^\/runtime\.json/,/^\/google-oauth\.json/,/\.test\.cjs$/],
-  extraResource:[path.join(__dirname,'app-update.yml'),path.join(root,'.build/bundle/python'),path.join(root,'.build/bundle/service'),...(fs.existsSync(googleOAuth)?[googleOAuth]:[])],
+  ignore:[/^\/dist/,/^\/ui/,/^\/native/,/^\/runtime\.json/,/^\/google-oauth\.json/,/\.test\.cjs$/],
+  extraResource:[path.join(__dirname,'app-update.yml'),path.join(root,'.build/audio-activity'),path.join(root,'.build/bundle/python'),path.join(root,'.build/bundle/service'),...(fs.existsSync(googleOAuth)?[googleOAuth]:[])],
   extendInfo:{NSUserNotificationAlertStyle:'alert',LSMinimumSystemVersion:'14.2',NSMicrophoneUsageDescription:'Call Note transcribes your microphone locally when you start a call.',NSAudioCaptureUsageDescription:'Call Note transcribes the other side of your calls using system audio.',NSScreenCaptureUsageDescription:'Call Note uses system capture to hear call audio. Video is never stored.'}
 }).then(paths=>{
   for(const output of paths) {

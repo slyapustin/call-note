@@ -20,7 +20,8 @@
     <div id="settings-content" class="settings-content">
       <section id="settings-general" role="tabpanel" aria-labelledby="settings-tab-general" data-settings-panel="general">
         <h3>General</h3><div class="settings-row"><div><label for="settings-appearance">Appearance</label><p>Follow your device, or choose a look for Call Note.</p></div><select id="settings-appearance" disabled><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
-        <p class="settings-footnote">Changes apply immediately. Transcription and saved calls stay on this device.</p>
+        <div class="settings-row"><div><label for="settings-detection">Call detection</label><p>Detect microphone activity in supported meeting apps on macOS 14.2 or later.</p></div><select id="settings-detection" disabled><option value="off">Off</option><option value="ask">Ask me to start</option><option value="auto">Start transcription automatically</option></select></div>
+        <p class="settings-footnote">Detection may mistake a pre-join screen, microphone test, or other browser recording for a call. Muted or listening-only calls can be missed. Transcription stays on this device.</p>
       </section>
       <section id="settings-calendar" role="tabpanel" aria-labelledby="settings-tab-calendar" data-settings-panel="calendar" hidden>
         <h3>Calendar</h3><p class="settings-description">Match meeting details and join upcoming calls from the Call Note tray menu.</p>
@@ -71,8 +72,8 @@
       <ul><li><span class="intro-check" aria-hidden="true">✓</span>Launch confirmed for Thursday</li><li><span class="intro-check" aria-hidden="true">✓</span>Alex: finish the installation guide</li><li><span class="intro-check" aria-hidden="true">✓</span>Follow up at tomorrow’s catch-up</li></ul>
     </div>
     <div class="intro-preview intro-news" data-preview="news" hidden>
-      <article><h3>An earlier countdown</h3><p>See “Call in 26 min” beside the menu bar icon. Previously the countdown only appeared in the final 15 minutes.</p></article>
-      <article><h3>Your reminders stay the same</h3><p>Keep your one-minute or 30-second notification. Click the menu bar icon to see meeting details and join.</p></article>
+      <article><h3>Choose how to start</h3><p>Open Settings → General → Call detection. Ask me to start is the default; choose Start transcription automatically for hands-free starts after granting audio access.</p></article>
+      <article><h3>A helpful signal, not a guarantee</h3><p>Microphone tests and pre-join screens can trigger detection. Muted calls may be missed. Use Stop & save when your call ends.</p></article>
     </div>
     <p id="intro-detail" class="intro-detail"></p>
   </div>

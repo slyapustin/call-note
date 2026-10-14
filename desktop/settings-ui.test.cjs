@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 function fixture(overrides = {}) {
   const elements = new Map(), errors = [], copied = [], requests = [];
-  let menuOpen, changed, status = {appearance:'system',leadSeconds:60}, calendar={connected:false,available:true,events:[]};
+  let menuOpen, changed, status = {appearance:'system',leadSeconds:60,detection:{mode:'ask',available:false}}, calendar={connected:false,available:true,events:[]};
   const document = {
     activeElement:null,
     createElement:tag=>({tag,textContent:''}),
@@ -31,6 +31,7 @@ function fixture(overrides = {}) {
     settingsStatus:async()=>status,
     setAppearance:async value=>(status={...status,appearance:value}),
     setReminder:async value=>(status={...status,leadSeconds:value}),
+    setDetection:async value=>(status={...status,detection:{...status.detection,mode:value}}),
     onSettingsOpen:callback=>{menuOpen=callback;},
     onSettingsChanged:callback=>{changed=callback;},
     onUpdateState() {}, updateStatus:async()=>({message:'Up to date'}),
@@ -94,6 +95,7 @@ test('failed preference persistence restores prior choice and native-menu change
   f.change({appearance:'light',leadSeconds:30});
   assert.equal(f.get('appearance').value,'light');assert.equal(f.get('reminder').value,'30');
   f.get('reminder').value='0';await f.get('reminder').onchange();assert.equal(f.get('reminder').value,'0');
+  f.get('detection').value='auto';await f.get('detection').onchange();assert.equal(f.get('detection').value,'auto');
 });
 
 test('diagnostics cancellation does not claim a file was saved and updates close Settings first',async()=>{
@@ -158,7 +160,7 @@ test('Settings and update dialog controls work while initial library loading is 
   const bridge={
     session:async()=>({token:'fixture',version:'0.2.7'}),
     settingsStatus:async()=>({appearance:'system',leadSeconds:60}),calendarStatus:async()=>({connected:false,available:true}),
-    onSettingsOpen(){},onSettingsChanged(){},onUpdateState(){},onMenuStart(){},onMenuStop(){},
+    onSettingsOpen(){},onSettingsChanged(){},onUpdateState(){},onMenuStart(){},onMenuStop(){},onDetectedStart(){},
     onUpdateOpen:callback=>{updateOpen=callback;},updateStatus:async()=>({message:'Up to date',phase:'current',enabled:true}),updateCheck:async()=>{},
   };
   const context=vm.createContext({document,window:{callDesk:bridge,addEventListener(){}},fetch:()=>{requested=true;return new Promise(()=>{});}});

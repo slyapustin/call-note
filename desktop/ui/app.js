@@ -97,7 +97,7 @@ class Capture {
       this.streams.push({name:'system',stream});
       if (!stream.getAudioTracks().length) throw Error(session.platform==='win32'?'Windows did not provide a system-audio track. Check your sound output device and reopen Call Note.':'macOS did not provide a system-audio track. Check Screen & System Audio Recording permission and reopen Call Note.');
     }
-    try {await refreshCalendar();} catch(error) {notice('Calendar could not refresh: '+error.message);}
+    await refreshCalendarPreservingDraft();
     this.socket=new WebSocket(location.origin.replace('http:','ws:')+'/api/record');
     await new Promise((resolve,reject)=> {
       const timeout=setTimeout(()=>reject(Error('Recording connection timed out.')),15000);
@@ -159,9 +159,16 @@ async function finish(graceful=true) {
   const recording=capture;window.callDesk.menuState({phase:'saving'});notice();$('stop').disabled=true;$('stop').textContent='Saving…';
   try {await recording.stop(graceful);} catch(error){notice(error.message);} finally {capture=null;deletion?.render();$('stop').disabled=false;$('stop').textContent='■ Stop & save';await library();await status();if(current)show(await api('/calls/'+current.id));}
 }
-$('start').onclick=handle(async()=> {notice();$('start').disabled=true;capture=new Capture();deletion?.render();introduction?.suspend();window.callDesk.recording(true);try{await capture.start();await library();}catch(error){capture.release();capture=null;deletion?.render();await status();throw error;}});
+async function startCapture() {
+  if(capture||!ready||sampleRunning)return false;
+  notice();$('start').disabled=true;capture=new Capture();deletion?.render();introduction?.suspend();window.callDesk.recording(true);
+  try {await capture.start();await library();return true;}
+  catch(error){capture.release();capture=null;deletion?.render();await status();throw error;}
+}
+$('start').onclick=handle(startCapture);
 $('stop').onclick=handle(()=>finish());
-$('new').onclick=()=>{if(capture){notice('Stop the current call before starting another.');return;}current=null;deletion?.render();clearSampleAudio();$('transcript').replaceChildren();$('segment-count').textContent='0';$('notes').value='';$('notes').disabled=true;$('save-notes').disabled=true;$('export').disabled=true;$('prompt').disabled=true;$('analyses').replaceChildren();$('meeting-details').hidden=true;$('call-status').textContent='';notice();$('title').value='';selectedEvent=null;handle(refreshCalendar)();$('setup').hidden=false;$('heading').textContent='Ready when you are.';$('title').focus();};
+async function newCall() {if(capture){notice('Stop the current call before starting another.');return;}current=null;deletion?.render();clearSampleAudio();$('transcript').replaceChildren();$('segment-count').textContent='0';$('notes').value='';$('notes').disabled=true;$('save-notes').disabled=true;$('export').disabled=true;$('prompt').disabled=true;$('analyses').replaceChildren();$('meeting-details').hidden=true;$('call-status').textContent='';notice();$('title').value='';selectedEvent=null;$('setup').hidden=false;$('heading').textContent='Ready when you are.';$('title').focus();await refreshCalendar();}
+$('new').onclick=handle(newCall);
 $('demo').onclick=handle(async()=>{const kind=$('sample-kind').value;sampleRunning=true;notice('Detecting speakers and transcribing the sample locally…');$('demo').disabled=true;try{show(await api(`/demo?sample=${kind}`,{method:'POST'}));const speakers=new Set(current.segments.map(row=>row.speaker).filter(Boolean)).size;notice(speakers?`Sample saved · ${speakers} ${speakers===1?'speaker':'speakers'} detected. Press play above the transcript to listen.`:'Sample saved, but no reliable speaker labels were detected. Use the player above the transcript to listen, or choose New call → Try sample to try again.', 'sample');await library();}finally{sampleRunning=false;await status();}});
 $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(handle(()=>library()),200);};
 $('more').onclick=handle(()=>library(true));
@@ -172,6 +179,17 @@ window.addEventListener('focus',handle(async()=>{if(current&&!capture){const not
 
 window.callDesk.onMenuStart(()=>{if(capture||!ready){window.callDesk.menuState({phase:capture?'recording':'idle'});return;}$('new').click();$('start').click();});
 window.callDesk.onMenuStop(handle(()=>finish()));
+window.callDesk.onDetectedStart(async request=>{
+  let started=false;
+  try {
+    if(capture||!ready||sampleRunning)throw Error('Call Note is busy. Start transcription once the current operation finishes.');
+    if(current&&$('notes').value!==current.notes)throw Error('Save your edited notes before starting transcription.');
+    if($('setup').hidden)await newCall();
+    else await refreshCalendarPreservingDraft();
+    started=await startCapture();
+  } catch(error) {reportError(error);notice(error.message);}
+  finally {window.callDesk.detectedResult({id:request.id,started});}
+});
 
 deletion = setupDeleteCall({getCurrent:()=>current,isRecording:()=>!!capture,remove:id=>api('/calls/'+encodeURIComponent(id),{method:'DELETE'}),onDeleted:async id=>{if(current?.id===id)$('new').click();await library();notice('Call deleted.');},onError:error=>{reportError(error);notice(error.message);}});
 
@@ -195,6 +213,13 @@ async function refreshCalendar() {
   $('calendar-status').textContent=state.connected?'Primary calendar · read-only':state.available===false?'Google sign-in is not available in this build yet.':'Connect Calendar to use meeting details';
   settings?.renderCalendar(state);
   return state;
+}
+async function refreshCalendarPreservingDraft() {
+  const title=$('title').value,eventId=selectedEvent?.id;
+  try {await refreshCalendar();} catch(error) {notice('Calendar could not refresh: '+error.message);}
+  selectedEvent=eventId?calendarEvents.find(event=>event.id===eventId)||null:null;
+  $('calendar-events').value=selectedEvent?.id||'';
+  $('title').value=title;
 }
 $('calendar-events').onchange=()=>{selectedEvent=calendarEvents.find(e=>e.id===$('calendar-events').value)||null;if(selectedEvent)$('title').value=selectedEvent.title;};
 await handle(refreshCalendar)();

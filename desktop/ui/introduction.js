@@ -2,13 +2,13 @@ const tour = [
   {
     title: 'Your calls, written down.',
     description: 'Start a call to transcribe your microphone and the voices you hear. Everything is processed on your device.',
-    detail: 'Recording starts only when you choose Start call. Use headphones for clearer results. Call Note saves the transcript, not the recording.',
+    detail: 'Recording starts when you choose Start call or enable automatic starting in Settings. Use headphones for clearer results. Call Note saves the transcript, not the recording.',
     preview: 'voices',
   },
   {
     title: 'Be ready for the next call.',
     description: 'Connect Google Calendar in Settings to match meeting details automatically. Your next meeting and a Join call action appear in the Call Note tray menu.',
-    detail: 'Choose a reminder one minute or 30 seconds before a meeting. Joining opens the meeting link; transcription still starts manually. Google sign-in currently requires an approved test account.',
+    detail: 'Choose a reminder one minute or 30 seconds before a meeting. Joining opens the meeting link; transcription starts manually unless you enable automatic call detection. Google sign-in currently requires an approved test account.',
     preview: 'calendar',
   },
   {
@@ -27,8 +27,8 @@ export function setupIntroduction({bridge, version, canOpen, onError}) {
   function render() {
     const isTour = kind === 'tour';
     get('eyebrow').textContent = isTour ? `A quick tour · ${step + 1} of ${tour.length}` : `What’s new in Call Note ${version}`;
-    get('title').textContent = isTour ? tour[step].title : 'See your next call sooner.';
-    get('description').textContent = isTour ? tour[step].description : 'Your next meeting now appears in the Mac menu bar up to one hour before it starts.';
+    get('title').textContent = isTour ? tour[step].title : 'Ready when your call starts.';
+    get('description').textContent = isTour ? tour[step].description : 'Call Note can now suggest transcription when a meeting app uses your microphone, or start automatically when you enable it.';
     get('detail').textContent = isTour ? tour[step].detail : 'This screen appears once after each app update. Reopen it anytime from Help → What’s New.';
     for (const preview of dialog.querySelectorAll('[data-preview]')) preview.hidden = preview.dataset.preview !== (isTour ? tour[step].preview : 'news');
     get('back').hidden = !isTour || step === 0;

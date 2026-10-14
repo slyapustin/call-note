@@ -2,6 +2,18 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {CallTray,presentation}=require('./tray.cjs');
 const idle={phase:'idle',engine:'ready',busy:false,seconds:0};
+test('call detection menu reflects the saved mode and changes it only on selection',()=>{
+  const choices=[];
+  class Tray {on(){} setTitle(){} setToolTip(){}}
+  const tray=new CallTray({Tray,Menu:{buildFromTemplate:items=>items},nativeImage:{createFromPath:()=>({setTemplateImage(){}})},setDetection:mode=>choices.push(mode)});
+  tray.setDetection({mode:'auto',available:true});
+  const items=tray.menu().find(item=>item.label==='Call detection').submenu;
+  assert.deepEqual(choices,[]);
+  assert.equal(items.find(item=>item.label==='Start transcription automatically').checked,true);
+  items.find(item=>item.label==='Off').click();assert.deepEqual(choices,['off']);
+  tray.setDetection({mode:'ask',available:false});
+  assert(tray.detectionMenu().submenu.some(item=>item.label==='Detection unavailable'));
+});
 test('call actions follow engine and recording state',()=>{
   assert.equal(presentation(idle).canStart,true);
   for(const state of [{...idle,engine:'loading'},{...idle,engine:'error'},{...idle,busy:true},{...idle,phase:'preparing'},{...idle,phase:'saving'}]) {

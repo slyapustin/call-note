@@ -22,7 +22,7 @@ test('settings, setup instructions, help links and diagnostics reject untrusted 
 
 test('reading settings and MCP instructions performs no preference or export action',()=>{
   const f=fixture(),event={allowed:true};
-  assert.deepEqual(f.handlers['settings:status'](event),{appearance:'system',leadSeconds:60});
+  assert.deepEqual(f.handlers['settings:status'](event),{appearance:'system',leadSeconds:60,detection:{mode:'ask',available:false}});
   assert.equal(f.handlers['mcp:setup'](event),f.setup);
   assert.deepEqual(f.changes,[]);assert.deepEqual(f.links,[]);assert.equal(f.exports(),0);
   assert.equal(f.handlers['connect-assistants'],undefined);
@@ -33,7 +33,7 @@ test('preferences validate values and share current state with the renderer',()=
   for(const value of [null,{},'auto',false])assert.throws(()=>f.handlers['settings:appearance'](event,value),/Invalid/);
   for(const value of [null,'30',-1,1,undefined])assert.throws(()=>f.handlers['settings:reminder'](event,value),/Invalid/);
   f.handlers['settings:appearance'](event,'dark');
-  assert.deepEqual(f.handlers['settings:reminder'](event,30),{appearance:'dark',leadSeconds:30});
+  assert.deepEqual(f.handlers['settings:reminder'](event,30),{appearance:'dark',leadSeconds:30,detection:{mode:'ask',available:false}});
   assert.deepEqual(f.changes,['dark',30]);assert.equal(f.notifications.length,2);
 });
 

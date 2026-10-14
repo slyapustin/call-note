@@ -1,5 +1,5 @@
-function registerSettings({ipcMain,trusted,theme,getReminders,notify=()=>{},getMcpSetup,openExternal,exportDiagnostics}) {
-  const status=()=>({appearance:theme.source,leadSeconds:getReminders()?.leadSeconds??60});
+function registerSettings({ipcMain,trusted,theme,getReminders,getDetection=()=>({mode:'ask',available:false}),setDetection=()=>{},notify=()=>{},getMcpSetup,openExternal,exportDiagnostics}) {
+  const status=()=>({appearance:theme.source,leadSeconds:getReminders()?.leadSeconds??60,detection:getDetection()});
   const publish=()=>{const state=status();notify(state);return state;};
   const setAppearance=source=>{
     if(!['system','light','dark'].includes(source))throw Error('Invalid appearance');
@@ -14,10 +14,12 @@ function registerSettings({ipcMain,trusted,theme,getReminders,notify=()=>{},getM
     if(!reminders)throw Error('Calendar settings are still loading. Try again shortly.');
     reminders.setLead(seconds);return publish();
   };
+  const changeDetection=mode=>{setDetection(mode);return publish();};
   const handlers={
     'settings:status':status,
     'settings:appearance':setAppearance,
     'settings:reminder':setReminder,
+    'settings:detection':changeDetection,
     'settings:export-diagnostics':exportDiagnostics,
     'mcp:setup':getMcpSetup,
     'mcp:docs':id=>{
@@ -29,6 +31,6 @@ function registerSettings({ipcMain,trusted,theme,getReminders,notify=()=>{},getM
     if(!trusted(event))throw Error('Untrusted window');
     return handler(value);
   });
-  return {status,publish,setAppearance,setReminder};
+  return {status,publish,setAppearance,setReminder,changeDetection};
 }
 module.exports={registerSettings};

@@ -24,6 +24,8 @@ export function setupSettings({bridge, version, refreshCalendar, openUpdates, be
     preferences = state;
     get('appearance').value = state.appearance;
     get('reminder').value = String(state.leadSeconds);
+    get('detection').value = state.detection?.mode || 'ask';
+    get('detection').disabled = state.detection?.supported === false;
   }
   function renderCalendar(state) {
     calendarState = state;
@@ -115,6 +117,10 @@ export function setupSettings({bridge, version, refreshCalendar, openUpdates, be
   });
   get('reminder').onchange = action(get('reminder'), async () => {
     try {renderPreferences(await bridge.setReminder(Number(get('reminder').value)));}
+    catch (error) {if (preferences) renderPreferences(preferences); throw error;}
+  });
+  get('detection').onchange = action(get('detection'), async () => {
+    try {renderPreferences(await bridge.setDetection(get('detection').value));}
     catch (error) {if (preferences) renderPreferences(preferences); throw error;}
   });
   function calendarAction(fn, success) {

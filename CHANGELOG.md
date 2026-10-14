@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.11 — 2026-10-14
+
+- Added macOS call detection using microphone activity from recognized meeting apps and browsers. Choose Off, Ask me to start (default), or Start transcription automatically in Settings → General or the menu bar.
+- Automatic starts require existing capture permissions, preserve unsaved notes, and work while the speech model is resting. Use Stop & save when finished. Calendar events alone do not start capture.
+- Detection is a likely-call signal: pre-join screens and microphone tests may trigger it; muted/listening-only calls may be missed. Live meeting-app transitions are not yet validated.
+
 ## 0.2.10 — 2026-10-14
 
 - Show the next call countdown in the Mac menu bar up to one hour before it starts, instead of only 15 minutes. Notification timing is unchanged.
