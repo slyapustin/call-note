@@ -1,0 +1,98 @@
+[
+  {
+    "engine": "bypass",
+    "input_snr_label": 0,
+    "aligned_si_sdr_db": -2.12,
+    "lag_samples": 0,
+    "speech_gain_db": 0.02,
+    "noise_only_attenuation_db": 0.0
+  },
+  {
+    "engine": "DeepFilterNet3",
+    "input_snr_label": 0,
+    "aligned_si_sdr_db": 8.43,
+    "lag_samples": 0,
+    "speech_gain_db": -1.89,
+    "noise_only_attenuation_db": 36.78
+  },
+  {
+    "engine": "RNNoise-native",
+    "input_snr_label": 0,
+    "aligned_si_sdr_db": 4.35,
+    "lag_samples": -1,
+    "speech_gain_db": -2.51,
+    "noise_only_attenuation_db": 40.76
+  },
+  {
+    "engine": "RNNoise-WASM",
+    "input_snr_label": 0,
+    "aligned_si_sdr_db": 4.01,
+    "lag_samples": -1,
+    "speech_gain_db": -2.44,
+    "noise_only_attenuation_db": 68.8
+  },
+  {
+    "engine": "bypass",
+    "input_snr_label": 5,
+    "aligned_si_sdr_db": 2.87,
+    "lag_samples": 0,
+    "speech_gain_db": 0.01,
+    "noise_only_attenuation_db": 0.0
+  },
+  {
+    "engine": "DeepFilterNet3",
+    "input_snr_label": 5,
+    "aligned_si_sdr_db": 12.53,
+    "lag_samples": 0,
+    "speech_gain_db": -1.0,
+    "noise_only_attenuation_db": 37.12
+  },
+  {
+    "engine": "RNNoise-native",
+    "input_snr_label": 5,
+    "aligned_si_sdr_db": 8.55,
+    "lag_samples": -1,
+    "speech_gain_db": -1.22,
+    "noise_only_attenuation_db": 41.79
+  },
+  {
+    "engine": "RNNoise-WASM",
+    "input_snr_label": 5,
+    "aligned_si_sdr_db": 8.35,
+    "lag_samples": -1,
+    "speech_gain_db": -1.04,
+    "noise_only_attenuation_db": 67.35
+  },
+  {
+    "engine": "bypass",
+    "input_snr_label": 10,
+    "aligned_si_sdr_db": 7.87,
+    "lag_samples": 0,
+    "speech_gain_db": 0.01,
+    "noise_only_attenuation_db": 0.0
+  },
+  {
+    "engine": "DeepFilterNet3",
+    "input_snr_label": 10,
+    "aligned_si_sdr_db": 15.93,
+    "lag_samples": 0,
+    "speech_gain_db": -0.6,
+    "noise_only_attenuation_db": 43.5
+  },
+  {
+    "engine": "RNNoise-native",
+    "input_snr_label": 10,
+    "aligned_si_sdr_db": 11.63,
+    "lag_samples": -1,
+    "speech_gain_db": -0.78,
+    "noise_only_attenuation_db": 45.21
+  },
+  {
+    "engine": "RNNoise-WASM",
+    "input_snr_label": 10,
+    "aligned_si_sdr_db": 11.56,
+    "lag_samples": -1,
+    "speech_gain_db": -0.6,
+    "noise_only_attenuation_db": 63.4
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "status": "blocked-audio-fixture-access",
+  "electron": "44.7.0",
+  "fixture": "fixtures/noisy-5db.wav",
+  "durationSeconds": 34,
+  "attempts": [
+    "off",
+    "on"
+  ],
+  "exitCode": 134,
+  "sandboxEvidence": "/usr/bin/log show reported Cannot run while sandboxed",
+  "realMicrophoneUsed": false,
+  "systemPermissionsChanged": false,
+  "securityFlagsDisabled": false,
+  "results": null,
+  "harness": "webrtc-harness/main.cjs",
+  "subagentLaunchFailure": "SIGABRT in AppKit/LaunchServices RegisterApplication -> GetCurrentProcess -> NSApplication init, before app-ready",
+  "rootLaunch": "Root ordinary launch succeeded in a different tool context",
+  "failure": "Chromium audio service failed opening the existing valid WAV; error emitted by simple_sources.cc before WAV parsing",
+  "fixtureValidation": {
+    "bytes": 3264044,
+    "mode": "0644",
+    "channels": 1,
+    "sampleRate": 48000,
+    "sampleWidth": 2,
+    "frames": 1632000,
+    "format": "PCM16 WAV"
+  },
+  "flagValidation": "Chromium fake_audio_input_stream.cc explicitly supports and strips %noloop"
+}

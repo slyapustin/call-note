@@ -1,0 +1,14 @@
+[
+  {
+    "engine": "RNNoise-native",
+    "aligned_si_sdr_db": 16.39,
+    "lag_samples": -1,
+    "speech_gain_db": -0.08
+  },
+  {
+    "engine": "RNNoise-WASM",
+    "aligned_si_sdr_db": 16.53,
+    "lag_samples": -1,
+    "speech_gain_db": -0.06
+  }
+]

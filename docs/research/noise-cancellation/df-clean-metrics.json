@@ -1,0 +1,6 @@
+{
+  "engine": "DeepFilterNet3",
+  "aligned_si_sdr_db": 30.38,
+  "lag_samples": 0,
+  "speech_gain_db": -0.21
+}
