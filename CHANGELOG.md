@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Reduced the Mac bundle by removing unused PyTorch dependencies and development tools, preserving Python executable aliases, and using LZFSE installer compression. Windows keeps PyTorch for CPU transcription.
+- Added real-model checks before and after Mac packaging, including streaming and hotwords, and reject nonportable app symlinks before signing.
+- Corrected the 0.2.8 highlights so Settings is no longer described as a new feature.
+
 ## 0.2.8 — 2026-10-14
 
 - Added a Windows x64 preview build with a bundled Python 3.13 CPU speech runtime and NSIS installer. Windows signing and live call-device validation are still pending; preview updates remain manual.

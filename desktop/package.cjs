@@ -17,4 +17,18 @@ packager({
   ignore:[/^\/dist/,/^\/ui/,/^\/runtime\.json/,/^\/google-oauth\.json/,/\.test\.cjs$/],
   extraResource:[path.join(__dirname,'app-update.yml'),path.join(root,'.build/bundle/python'),path.join(root,'.build/bundle/service'),...(fs.existsSync(googleOAuth)?[googleOAuth]:[])],
   extendInfo:{NSUserNotificationAlertStyle:'alert',LSMinimumSystemVersion:'14.2',NSMicrophoneUsageDescription:'Call Note transcribes your microphone locally when you start a call.',NSAudioCaptureUsageDescription:'Call Note transcribes the other side of your calls using system audio.',NSScreenCaptureUsageDescription:'Call Note uses system capture to hear call audio. Video is never stored.'}
-}).then(paths=>console.log(paths.join('\n'))).catch(error=>{console.error(error);process.exitCode=1;});
+}).then(paths=>{
+  for(const output of paths) {
+    const resources=path.join(output,'Call Note.app/Contents/Resources');
+    const bin=path.join(resources,'python/bin');
+    for(const name of ['python','python3']) {
+      const alias=path.join(bin,name);
+      const destination=fs.readlinkSync(alias);
+      if(!['python3.13',path.join(root,'.build/bundle/python/bin/python3.13')].includes(destination))throw Error(`Unexpected packaged Python alias: ${destination}`);
+      fs.unlinkSync(alias);
+      fs.symlinkSync('python3.13',alias);
+    }
+    execFileSync(path.join(bin,'python3.13'),['-I','-B',path.join(root,'scripts/bundle_smoke.py'),path.join(resources,'service')],{stdio:'inherit'});
+  }
+  console.log(paths.join('\n'));
+}).catch(error=>{console.error(error);process.exitCode=1;});

@@ -5,6 +5,7 @@ import json
 import shutil
 import subprocess
 import sys
+from slim_mac_runtime import slim_runtime
 
 ROOT=Path(__file__).resolve().parents[1]
 BUILD=ROOT/'.build'
@@ -45,7 +46,12 @@ def main():
     source=ROOT/'.venv/lib/python3.13/site-packages'
     packages=target/'lib/python3.13/site-packages'
     shutil.copytree(source,packages,dirs_exist_ok=True,symlinks=False,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+    slim_runtime(target)
     prepare_service(architecture="arm64", platform="darwin")
+    manifest_path=BUNDLE/'service/bundle.json'
+    manifest=json.loads(manifest_path.read_text())
+    manifest['runtime_profile']='macos-mlx'
+    manifest_path.write_text(json.dumps(manifest,indent=2)+'\n')
     # Check native linkage: a release must not require this machine's Homebrew.
     external=[]
     for path in target.rglob('*'):
@@ -63,6 +69,7 @@ def main():
             if dependency.startswith('/') and not dependency.startswith(('/usr/lib/','/System/Library/')):
                 external.append(f'{path.relative_to(target)}: {dependency}')
     if external:raise SystemExit('Nonportable native dependencies:\n'+'\n'.join(external))
+    subprocess.run([str(target/'bin/python3.13'),'-I','-B',str(ROOT/'scripts/bundle_smoke.py'),str(BUNDLE/'service')],check=True)
     print('Portable bundle prepared:',BUNDLE)
 
 if __name__=='__main__':main()

@@ -10,7 +10,7 @@ Call Note is currently Apple Silicon only, macOS 14.2+. The app uses electron-up
    For Calendar sign-in, provide the release owner's Desktop OAuth client in the ignored `desktop/google-oauth.json` file. See [Google Calendar setup](development.md#google-calendar).
 4. Run `npm ci --prefix desktop`, then `npm run package:mac --prefix desktop`.
 
-The build bundles portable CPython 3.13.16, tested site-packages, local model weights, service/UI code, sample audio, and license notices. It audits native linkage for Homebrew dependencies. Build on Apple Silicon.
+The build bundles portable CPython 3.13.16, tested site-packages, local model weights, service/UI code, sample audio, and license notices. The Mac MLX runtime excludes PyTorch, its unused support packages, pip, and test tooling; the development environment and Windows CPU runtime retain their dependencies. Python executable aliases stay as internal relative symlinks. It audits native linkage for Homebrew dependencies and runs offline transcription, streaming/hotword, speaker-detection, and MCP checks before packaging succeeds. Build on Apple Silicon. See [bundle size measurements](packaging-size.md).
 
 ## Sign and notarize
 

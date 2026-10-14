@@ -16,6 +16,12 @@ def run(*args):
     if result.returncode:raise SystemExit(result.stdout+result.stderr)
     if str(args[0]) not in ('codesign',):print(result.stdout.strip(),flush=True)
 
+def validate_bundle_links(app):
+    app=app.resolve()
+    for link in app.rglob('*'):
+        if link.is_symlink() and (link.readlink().is_absolute() or not link.exists() or not link.resolve().is_relative_to(app)):
+            raise SystemExit(f'Nonportable symbolic link in app: {link}')
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--app',type=Path,required=True)
@@ -24,6 +30,7 @@ def main():
     parser.add_argument('--sign-only',action='store_true',help='Sign and verify the app without making a DMG')
     args=parser.parse_args()
     app=args.app.resolve()
+    validate_bundle_links(app)
     for cache in app.rglob('__pycache__'):
         if cache.is_dir():shutil.rmtree(cache)
     service_cache=app/'Contents/Resources/service/.cache'
@@ -84,7 +91,7 @@ def main():
     (staging/'INSTALL.txt').write_text('Call Note '+version+'\n\nDrag Call Note to Applications, then open it there.\nApple Silicon Mac, macOS 14.2 or later.\nPython and the speech model are included; no Homebrew required.\nAllow microphone and system-audio recording when prompted.\n\nUpdates check automatically after launch and every four hours. New versions download in the background and install when you quit. For an optional manual check or restart, use Call Note menu > Check for Updates. Saved calls remain in your user Library.\n')
     suffix='' if args.notary_profile else '-preview'
     dmg=output/f'Call-Note-{version}-macOS-arm64{suffix}.dmg'
-    run('hdiutil','create','-volname','Call Note','-srcfolder',staging,'-ov','-format','UDZO',dmg)
+    run('hdiutil','create','-volname','Call Note','-srcfolder',staging,'-ov','-format','ULFO',dmg)
     if args.identity:run('codesign','--force','--sign',identity,'--timestamp',dmg)
     if args.notary_profile:
         run('xcrun','notarytool','submit',dmg,'--keychain-profile',args.notary_profile,'--wait')
