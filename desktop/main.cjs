@@ -6,7 +6,7 @@ const path = require('node:path');
 const net = require('node:net');
 app.setName('Call Note');
 app.setPath('userData', path.join(app.getPath('appData'), 'CallDesk'));
-let calendar, updates, callTray, reminders, introduction;
+let calendar, updates, callTray, reminders, introduction, callDetection;
 let window, service, quitting = false, recording = false;
 const token = randomBytes(32).toString('hex');
 let origin;
@@ -105,6 +105,7 @@ app.whenReady().then(async () => {
   });
   ipcMain.on('recording', (event, value) => { if (trusted(event)) { if(value&&!recording)callTray?.update({phase:'preparing',seconds:0});
     if(!value)callTray?.update({phase:'idle',seconds:0});
+    callDetection?.suppress();
     recording = !!value; window.setTitle(recording ? '● Recording · Call Note' : 'Call Note'); } });
   window = new BrowserWindow({width:1240,height:850,minWidth:940,minHeight:650,backgroundColor:windowBackground(),title:'Call Note',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
   window.webContents.setWindowOpenHandler(() => ({action:'deny'}));
@@ -116,9 +117,19 @@ app.whenReady().then(async () => {
   const {Tray,nativeImage,Notification,powerMonitor}=require('electron');
   const reminderAction=action=>Promise.resolve().then(action).catch(()=>dialog.showErrorBox('Call Note Calendar','Could not complete this action. Open Call Note and try again.'));
   callTray=new CallTray({Tray,Menu,nativeImage,version:app.getVersion(),show:showWindow,
+    setDetection:mode=>{try{callDetection.setMode(mode);}catch{dialog.showErrorBox('Call detection','Could not save the setting. Check that your user Library is writable and try again.');}},
     join:key=>reminderAction(()=>reminders.join(key)),setReminder:seconds=>reminderAction(()=>reminders.setLead(seconds)),
     start:()=>{showWindow();window.webContents.send('tray:start');},
     stop:()=>window.webContents.send('tray:stop'),quit:()=>app.quit()});
+  const {createCallDetection}=require('./call-detection-actions.cjs');
+  callDetection=createCallDetection({helper:app.isPackaged?path.join(process.resourcesPath,'audio-activity'):path.join(root,'.build/audio-activity'),
+    settingsFile:path.join(data,'call-detection.json'),Notification,dialog,ipcMain,trusted,show:showWindow,
+    getBusy:()=>recording||callTray.state.busy||callTray.state.phase!=='idle',
+    canStart:()=>!recording&&callTray.state.phase==='idle'&&callTray.state.engine==='ready'&&!callTray.state.busy,
+    hasPermissions:()=>process.platform==='darwin'&&['microphone','screen'].every(kind=>systemPreferences.getMediaAccessStatus(kind)==='granted'),
+    start:request=>{if(!request.automatic)showWindow();window.webContents.send('detection:start',request);},
+    onChange:state=>callTray.setDetection(state)});
+  callTray.setDetection(callDetection.status());
   const {MeetingReminders}=require('./meeting-reminders.cjs');
   reminders=new MeetingReminders({loadEvents:()=>calendar.events(),onChange:value=>callTray.setMeetings(value),openExternal:url=>shell.openExternal(url),show:showWindow,
     settingsFile:path.join(data,'meeting-reminders.json'),
@@ -129,10 +140,10 @@ app.whenReady().then(async () => {
       notification.on('click',open);notification.on('action',open);notification.on('failed',()=>{});notification.show();
       return ()=>notification.close();
     }});
-  powerMonitor.on('suspend',()=>reminders.reset());
-  powerMonitor.on('resume',async()=>{await reminders.pending?.catch(()=>{});reminders.refresh().catch(()=>{});});
-  ipcMain.on('tray:state',(event,value)=>{if(trusted(event))callTray.update(value);});
-  window.webContents.on('render-process-gone',()=>{diagnostics.record('renderer',{name:'Error',code:'RENDERER_GONE'});recording=false;callTray.update({phase:'idle',engine:'error'});});
+  powerMonitor.on('suspend',()=>{reminders.reset();callDetection.stop();});
+  powerMonitor.on('resume',async()=>{if(callTray.state.engine==='ready')callDetection.start();await reminders.pending?.catch(()=>{});reminders.refresh().catch(()=>{});});
+  ipcMain.on('tray:state',(event,value)=>{if(trusted(event)){callTray.update(value);if(callTray.state.engine==='ready')callDetection.start();else callDetection.stop();}});
+  window.webContents.on('render-process-gone',()=>{diagnostics.record('renderer',{name:'Error',code:'RENDERER_GONE'});recording=false;callDetection.stop();callTray.update({phase:'idle',engine:'error'});});
   let ready = false;
   for (let attempt=0;attempt<300;attempt++) {
     try { if ((await fetch(origin)).ok) {ready=true;break;} } catch {}
@@ -150,5 +161,5 @@ app.on('before-quit', event => {
     const choice=dialog.showMessageBoxSync(window,{type:'question',buttons:['Keep recording','Quit and end call'],defaultId:0,cancelId:0,message:'A call is being transcribed.',detail:'Quitting saves finalized text and marks the call interrupted.'});
     if(choice===0){event.preventDefault();return;}
   }
-  quitting=true;reminders?.stop();service?.kill('SIGTERM');
+  quitting=true;callDetection?.stop();reminders?.stop();service?.kill('SIGTERM');
 });

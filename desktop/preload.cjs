@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('callDesk', {
   menuState:state=>ipcRenderer.send('tray:state',state),
   onMenuStart:callback=>ipcRenderer.on('tray:start',()=>callback()),
   onMenuStop:callback=>ipcRenderer.on('tray:stop',()=>callback()),
+  onDetectedStart:callback=>ipcRenderer.on('detection:start',(_event,request)=>callback(request)),
+  detectedResult:result=>ipcRenderer.send('detection:result',result),
   session:()=>ipcRenderer.invoke('session'),
   microphone:()=>ipcRenderer.invoke('microphone'),
   recording:value=>ipcRenderer.send('recording', !!value)

@@ -139,7 +139,13 @@ async function finish(graceful=true) {
   const recording=capture;window.callDesk.menuState({phase:'saving'});notice();$('stop').disabled=true;$('stop').textContent='Saving…';
   try {await recording.stop(graceful);} catch(error){notice(error.message);} finally {capture=null;$('stop').disabled=false;$('stop').textContent='■ Stop & save';await library();await status();if(current)show(await api('/calls/'+current.id));}
 }
-$('start').onclick=handle(async()=> {notice();$('start').disabled=true;capture=new Capture();introduction?.suspend();window.callDesk.recording(true);try{await capture.start();await library();}catch(error){capture.release();capture=null;await status();throw error;}});
+async function startCapture() {
+  if(capture||!ready||sampleRunning)return false;
+  notice();$('start').disabled=true;capture=new Capture();introduction?.suspend();window.callDesk.recording(true);
+  try {await capture.start();await library();return true;}
+  catch(error){capture.release();capture=null;await status();throw error;}
+}
+$('start').onclick=handle(startCapture);
 $('stop').onclick=handle(()=>finish());
 $('new').onclick=()=>{if(capture){notice('Stop the current call before starting another.');return;}current=null;$('sample-audio').pause();$('sample-audio').hidden=true;$('transcript').replaceChildren();$('segment-count').textContent='0';$('notes').value='';$('notes').disabled=true;$('save-notes').disabled=true;$('export').disabled=true;$('prompt').disabled=true;$('analyses').replaceChildren();$('meeting-details').hidden=true;$('call-status').textContent='';notice();$('title').value='';selectedEvent=null;handle(refreshCalendar)();$('setup').hidden=false;$('heading').textContent='Ready when you are.';$('title').focus();};
 $('demo').onclick=handle(async()=>{const kind=$('sample-kind').value;sampleRunning=true;notice('Detecting speakers and transcribing the sample locally…');$('demo').disabled=true;try{show(await api(`/demo?sample=${kind}`,{method:'POST'}));const speakers=new Set(current.segments.map(row=>row.speaker).filter(Boolean)).size;notice(speakers?`Sample saved · ${speakers} ${speakers===1?'speaker':'speakers'} detected. Press play above the transcript to listen.`:'Sample saved, but no reliable speaker labels were detected. Use the player above the transcript to listen, or choose New call → Try sample to try again.', 'sample');await library();}finally{sampleRunning=false;await status();}});
@@ -153,6 +159,16 @@ window.addEventListener('focus',handle(async()=>{if(current&&!capture){const not
 
 window.callDesk.onMenuStart(()=>{if(capture||!ready){window.callDesk.menuState({phase:capture?'recording':'idle'});return;}$('new').click();$('start').click();});
 window.callDesk.onMenuStop(handle(()=>finish()));
+window.callDesk.onDetectedStart(async request=>{
+  let started=false;
+  try {
+    if(capture||!ready||sampleRunning)throw Error('Call Note is busy. Start transcription once the current operation finishes.');
+    if(current&&$('notes').value!==current.notes)throw Error('Save your edited notes before starting transcription.');
+    $('new').click();
+    started=await startCapture();
+  } catch(error) {reportError(error);notice(error.message);}
+  finally {window.callDesk.detectedResult({id:request.id,started});}
+});
 
 await library();await status();setInterval(status,5000);
 

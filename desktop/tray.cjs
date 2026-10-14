@@ -9,8 +9,9 @@ function presentation(state) {
     canStart:state.phase==='idle'&&state.engine==='ready'&&!state.busy, canStop:state.phase==='recording'};
 }
 class CallTray {
-  constructor({Tray, Menu, nativeImage, show, start, stop, quit, join, setReminder, version}) {
-    this.Menu=Menu;this.actions={show,start,stop,quit,join,setReminder};this.version=version;
+  constructor({Tray, Menu, nativeImage, show, start, stop, quit, join, setReminder, setDetection, version}) {
+    this.Menu=Menu;this.actions={show,start,stop,quit,join,setReminder,setDetection};this.version=version;
+    this.detection={mode:'ask',available:false};
     this.meetings={events:[],leadSeconds:60};
     this.state={phase:'idle',engine:'loading',busy:false,seconds:0,microphone:false,system:false};
     const icon=nativeImage.createFromPath(path.join(__dirname,'assets/callNoteTemplate.png'));
@@ -32,6 +33,16 @@ class CallTray {
     this.tray.setToolTip(`Call Note — ${view.status}${next?`\n${next.title} · ${next.timing}`:''}`);
   }
   setMeetings(value) {this.meetings=value;this.update({});}
+  setDetection(value) {this.detection=value;}
+  detectionMenu() {
+    return {label:'Call detection',submenu:[
+      ...[['off','Off'],['ask','Ask me to start'],['auto','Start transcription automatically']].map(([mode,label])=>({label,type:'radio',checked:this.detection.mode===mode,click:()=>this.actions.setDetection?.(mode)})),
+      {type:'separator'},
+      {label:this.detection.mode==='off'?'Detection is off':this.detection.available?'Watching for microphone activity':'Detection unavailable',enabled:false},
+      {label:'May detect pre-join screens and microphone tests',enabled:false},
+      {label:'Muted or listening-only calls can be missed',enabled:false}
+    ]};
+  }
   meetingMenu() {
     return [
       {label:'Calendar',enabled:false},
@@ -53,6 +64,7 @@ class CallTray {
       ...(this.state.phase==='recording'?[{label:sources||'Capturing audio',enabled:false}]:[]),
       {type:'separator'},
       ...this.meetingMenu(),
+      this.detectionMenu(),
       {label:'Open Call Note',click:this.actions.show},
       {label:'Start new call',enabled:view.canStart,click:()=>{if(!presentation(this.state).canStart)return;this.update({phase:'preparing'});this.actions.start();}},
       {label:'Stop & save call',enabled:view.canStop,click:()=>{if(!presentation(this.state).canStop)return;this.update({phase:'saving'});this.actions.stop();}},
