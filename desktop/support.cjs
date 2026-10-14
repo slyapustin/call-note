@@ -2,10 +2,10 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 
 function registerSupport({ipcMain, clipboard, trusted, diagnostics}) {
-  ipcMain.handle('clipboard:write', (event, text) => {
+  ipcMain.handle('clipboard:write', async (event, text) => {
     if (!trusted(event)) throw Error('Untrusted window');
     if (typeof text !== 'string' || text.length > 100000) throw Error('Invalid clipboard text');
-    try { clipboard.writeText(text); }
+    try { await clipboard.writeText(text); }
     catch (error) { diagnostics.record('clipboard', error); throw Error('Could not copy the text. Try again.'); }
   });
   ipcMain.on('diagnostics:error', (event, error) => {

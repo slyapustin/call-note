@@ -2,25 +2,34 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {registerSupport, createDiagnosticsExporter} = require('./support.cjs');
 
-test('clipboard writes through Electron only for the trusted renderer and bounded strings', () => {
+test('clipboard writes through Electron only for the trusted renderer and bounded strings', async () => {
   const handlers={}, writes=[], events=[];
   registerSupport({ipcMain:{handle:(name,fn)=>handlers[name]=fn,on:(name,fn)=>handlers[name]=fn},
     clipboard:{writeText:text=>writes.push(text)},trusted:event=>event.allowed,
     diagnostics:{record:(...args)=>events.push(args)}});
-  assert.throws(()=>handlers['clipboard:write']({allowed:false},'secret'),/Untrusted/);
-  for (const value of [null,{},'x'.repeat(100001)]) assert.throws(()=>handlers['clipboard:write']({allowed:true},value),/Invalid/);
-  handlers['clipboard:write']({allowed:true},'Call Note analysis prompt');
+  await assert.rejects(()=>handlers['clipboard:write']({allowed:false},'secret'),/Untrusted/);
+  for (const value of [null,{},'x'.repeat(100001)]) await assert.rejects(()=>handlers['clipboard:write']({allowed:true},value),/Invalid/);
+  await handlers['clipboard:write']({allowed:true},'Call Note analysis prompt');
   assert.deepEqual(writes,['Call Note analysis prompt']);
   handlers['diagnostics:error']({allowed:false},{message:'untrusted'});
   assert.equal(events.length,0);
 });
 
-test('clipboard failures record the error without passing copied content to diagnostics', () => {
+test('clipboard failures record the error without passing copied content to diagnostics', async () => {
   const handlers={},events=[];const error=new Error('Native clipboard unavailable');
   registerSupport({ipcMain:{handle:(n,f)=>handlers[n]=f,on:()=>{}},trusted:()=>true,
-    clipboard:{writeText:()=>{throw error;}},diagnostics:{record:(...args)=>events.push(args)}});
-  assert.throws(()=>handlers['clipboard:write']({},'private call title'),/Could not copy/);
+    clipboard:{writeText:async()=>{throw error;}},diagnostics:{record:(...args)=>events.push(args)}});
+  await assert.rejects(()=>handlers['clipboard:write']({},'private call title'),/Could not copy/);
   assert.deepEqual(events,[['clipboard',error]]);
+});
+
+test('clipboard IPC completes only after Electron acknowledges the asynchronous write', async () => {
+  const handlers={};let finish, completed=false;
+  registerSupport({ipcMain:{handle:(n,f)=>handlers[n]=f,on:()=>{}},trusted:()=>true,
+    clipboard:{writeText:()=>new Promise(resolve=>{finish=resolve;})},diagnostics:{record:()=>{}}});
+  const pending=handlers['clipboard:write']({},'prompt').then(()=>{completed=true;});
+  await Promise.resolve();assert.equal(completed,false);
+  finish();await pending;assert.equal(completed,true);
 });
 
 test('diagnostics export cancellation writes nothing; successful export saves report without sending it', async () => {
