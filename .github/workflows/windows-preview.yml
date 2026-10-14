@@ -85,3 +85,35 @@ jobs:
             .build/bundle/service/bundle.json
           if-no-files-found: error
           retention-days: 14
+
+  publish-preview:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/windows-port' && contains(github.event.head_commit.message, '[publish-windows-preview]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Call-Note-Windows-x64-preview-${{ github.sha }}
+          path: preview
+      - name: Verify installer and publish preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          root = Path('preview/windows-dist')
+          records = dict(line.split('  ', 1)[::-1] for line in (root / 'SHA256SUMS.txt').read_text().splitlines())
+          installer = root / 'Call-Note-0.2.8-Windows-x64.exe'
+          with installer.open('rb') as stream:
+              digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+          assert records[installer.name] == digest
+          (root / (installer.name + '.sha256')).write_text(f'{digest}  {installer.name}\n')
+          PY
+          gh release create v0.2.8-windows-preview --draft --prerelease --latest=false --target "$GITHUB_SHA" --title 'Call Note 0.2.8 — Windows preview' --notes-file docs/windows-preview-release.md
+          gh release upload v0.2.8-windows-preview preview/windows-dist/Call-Note-0.2.8-Windows-x64.exe preview/windows-dist/Call-Note-0.2.8-Windows-x64.exe.sha256
+          gh release edit v0.2.8-windows-preview --draft=false --prerelease --latest=false
