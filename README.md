@@ -10,16 +10,16 @@ Call Note transcribes both sides of your calls on your Mac. Find past conversati
 
 *A saved sample conversation. Transcription and your call library stay on your Mac.*
 
-### [Download v0.2.7 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.7/Call-Note-0.2.7-macOS-arm64.dmg)
+### [Download v0.2.8 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.8/Call-Note-0.2.8-macOS-arm64.dmg)
 
-Newest downloadable build · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.7)
+Newest downloadable build · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.8)
 
 **Apple Silicon (M1 or newer) · macOS 14.2+ · English speech**
 
 [Windows 11 x64 preview (.exe)](https://github.com/slyapustin/call-note/releases/download/v0.2.8-windows-preview/Call-Note-0.2.8-Windows-x64.exe) · Unsigned preview, manual updates. [Requirements and testing status](https://github.com/slyapustin/call-note/releases/tag/v0.2.8-windows-preview).
 
 > [!NOTE]
-> **Signed and notarized.** Call Note v0.2.7 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
+> **Signed and notarized.** Call Note v0.2.8 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
 
 ## Get started
 
@@ -35,7 +35,8 @@ Newest downloadable build · [Release notes](https://github.com/slyapustin/call-
 - **Make it yours.** Open **Settings** from the sidebar or press **⌘,** to manage appearance, Calendar, meeting reminders, and support. Follow your Mac’s appearance, or choose Light or Dark. Revisit the tour and update highlights from **Help**.
 - **Read as you talk.** Live transcription of your microphone and the other side of a call.
 - **Follow each speaker.** Automatic Speaker 1, Speaker 2, and Speaker 3 labels for voices in system audio. Your microphone stays labeled You.
-- **Find what mattered.** Search saved calls, add notes, or export the transcript.
+- **Find what mattered.** Search saved calls, add notes, or export the transcript. Delete unwanted calls from your library with confirmation.
+- **Free memory between calls.** Speech models load when needed and the speech service releases its memory after two idle minutes. The next call takes a few seconds to prepare.
 - **Ask your assistant.** Open **Settings → Assistants**, choose Codex or Claude, and follow the setup steps with the copyable configuration. Call Note does not change your assistant’s settings.
 - **Try it first.** Choose **New call → Team discussion · 3 voices → Try sample**, then play the audio above the labeled transcript.
 - **Join on time.** See upcoming Calendar meetings in the menu bar, with a reminder one minute or 30 seconds before the call and a Join action.
@@ -67,7 +68,7 @@ Transcription runs locally. Call Note saves text, not call recordings. Connectin
 
 Recording starts manually. Speaker labels are estimates, especially with short replies, similar voices, or overlapping speech. Earlier saved calls cannot be relabeled because their audio was not retained; run the sample again to try speaker detection. Use headphones to reduce duplicate audio. Google Calendar sign-in is available to approved test accounts. The Windows preview has additional setup and validation limits listed in its release notes.
 
-Install v0.2.7 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
+Install v0.2.8 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
 
 ## Share a troubleshooting report
 

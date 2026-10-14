@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.8 — in development
+## 0.2.8 — 2026-10-14
 
 - Added a Windows x64 preview build with a bundled Python 3.13 CPU speech runtime and NSIS installer. Windows signing and live call-device validation are still pending; preview updates remain manual.
 - Load speech models only when needed. After two idle minutes, release models and gracefully recycle the local speech service to return native allocations to the operating system. Saved calls remain available after restart.
