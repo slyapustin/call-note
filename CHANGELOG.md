@@ -1,16 +1,17 @@
 # Changelog
 
-## 0.2.4 — Unreleased
+## 0.2.4 — 2026-10-14
 
+- Shipped a Developer ID-signed, Apple-notarized app and DMG, with update ZIP and manifest for automatic updates.
 - Added local speaker detection for live system audio and the bundled samples. The microphone remains labeled You; other voices receive per-call Speaker numbers.
 - Included speaker labels in Markdown exports and MCP responses.
 - Moved sample playback above the transcript and improved speaker-detection feedback.
 - Kept the notes panel compact beside long transcripts and clarified assistant access to the call library.
 - Organized Python code into `service/`, `tests/`, and `scripts/`.
 - Added a database backup before migrating existing transcripts to support speaker labels.
-- Verified three speakers across ten turns in the discussion sample, one speaker in the solo sample, and the streaming audio pipeline. Passed 34 Python and 19 desktop tests.
+- Verified three speakers across ten turns in the discussion sample, one speaker in the solo sample, and the streaming audio pipeline. The latest replay processed 111.65 seconds of sample audio in 81.66 seconds, excluding model loading. Passed 34 Python and 19 desktop tests.
 
-Speaker labels are estimates. Older saved calls cannot be reprocessed because their audio was not retained; bundled samples can be run again. See the release notes for this build's final signing and notarization status.
+Speaker labels are estimates. Older saved calls cannot be reprocessed because their audio was not retained; bundled samples can be run again. The app and installer passed stapling and macOS Gatekeeper checks. An actual version-to-version automatic upgrade has not yet been verified.
 
 ## 0.2.3 — 2026-10-13
 

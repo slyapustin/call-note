@@ -2,15 +2,15 @@
 
 Local call transcription for macOS, powered by Phonon-2, with a searchable call library and MCP tools for Codex and Claude.
 
-**Developer preview:** Electron + Python, Apple Silicon macOS. Windows and outgoing virtual-microphone noise cancellation are planned. English speech only.
+**Desktop app:** Electron + Python, Apple Silicon macOS. Windows and outgoing virtual-microphone noise cancellation are planned. English speech only.
 
 ## Download and install
 
-Download the newest test DMG from [Releases](https://github.com/slyapustin/call-note/releases). GitHub's Latest release points to the newest downloadable build; check its notes for notarization status.
+Download the newest DMG from [Releases](https://github.com/slyapustin/call-note/releases). GitHub's Latest release points to the newest downloadable build; check its notes for notarization status.
 
 Open the DMG, drag **Call Note** into **Applications**, and launch it there. Requires an Apple Silicon Mac and macOS 14.2 or later. Python, dependencies, the speech model, and playable one-voice and three-voice samples are included. No Homebrew or model download is needed for transcription.
 
-A release named `preview` or `test` may not have completed Apple notarization; its release notes state the signing status. Signed and notarized builds are the intended stable distribution format.
+The 0.2.4 app and DMG are signed with Apple Developer ID and notarized by Apple. Both passed stapling and macOS Gatekeeper checks. Older preview downloads may still show the Apple verification warning; install the current DMG.
 
 ## Menu bar
 
@@ -22,9 +22,9 @@ Calendar checks run once a minute in the main process, including while the windo
 
 ## Updates
 
-Call Note checks automatically after launch and every four hours, downloads newer stable releases in the background, and installs on quit. Test releases require manual installation. Until a stable release includes the complete update package, checks report that automatic-update packages are unavailable and offer **View downloads**. No GitHub login is needed with public releases. The sidebar shows only the installed version. **Call Note → Check for Updates** remains available for an optional manual check or **Restart & install**.
+Call Note checks automatically after launch and every four hours, downloads newer stable releases in the background, and installs on quit. Test releases require manual installation. Version 0.2.4 includes the signed update ZIP and manifest. When a release lacks those files, checks report that automatic-update packages are unavailable and offer **View downloads**. No GitHub login is needed with public releases. The sidebar shows only the installed version. **Call Note → Check for Updates** remains available for an optional manual check or **Restart & install**.
 
-Restart is blocked while a call is recording or being saved. Calls and Calendar settings remain in your user Library. The existing 0.2.0 preview requires manual installation; install the first signed release from its DMG once to enable future automatic updates.
+Restart is blocked while a call is recording or being saved. Calls and Calendar settings remain in your user Library. The 0.2.0 preview requires manual installation; install the current DMG once to enable future automatic updates. The update implementation is tested, but an actual version-to-version automatic upgrade has not yet been verified.
 
 ## Build from source
 
@@ -59,7 +59,7 @@ The first capture requests macOS microphone and Screen & System Audio Recording 
 
 ### Google Calendar
 
-The preview includes a Google desktop OAuth flow with PKCE, a random loopback callback, and read-only `calendar.events.readonly` scope. Tokens are encrypted using Electron safeStorage (macOS Keychain-backed) and never passed to the renderer or Python service.
+The app includes a Google desktop OAuth flow with PKCE, a random loopback callback, and read-only `calendar.events.readonly` scope. Tokens are encrypted using Electron safeStorage (macOS Keychain-backed) and never passed to the renderer or Python service.
 
 One-time developer setup:
 
@@ -113,7 +113,7 @@ node --test desktop/*.test.cjs
 
 The speaker smoke check runs the real models on both bundled WAV files; `--stream` also loads Phonon-2 and sends the discussion through the rolling decoder in 50 ms frames. It checks the three returning speaker identities and their turn order, checks that the solo sample has one speaker, and fails on missing labels or streaming warnings. It reports processing time without enforcing a device-specific speed target. Sample scripts are not used to generate detected labels.
 
-For 0.2.4, 34 Python tests and 19 desktop tests passed. Real-model checks found three speakers across ten discussion turns and one speaker in the solo sample. The streaming check processed 112.65 seconds of sample audio in 95.4 seconds on the development Mac, excluding model loading. This was an audio-pipeline test, not a microphone capture or real meeting accuracy evaluation.
+For 0.2.4, 34 Python tests and 19 desktop tests passed. Real-model checks found three speakers across ten discussion turns and one speaker in the solo sample. The streaming check processed 111.65 seconds of sample audio in 81.66 seconds on the development Mac, excluding model loading. This was an audio-pipeline test, not a microphone capture or real meeting accuracy evaluation.
 
 Tests cover persistence, search escaping, transcript/analysis separation, recovery, authenticated APIs, dual-source streaming and final flush, invalid frames, real MCP stdio discovery/read/write, config preservation, and calendar normalization/matching. The standalone runtime passed an offline transcription and MCP smoke check without Homebrew on its launch path. The packaged app has transcribed and saved the 108-second synthetic sample using the real MLX model and played the sample audio. A 42-second live capture test verified separate microphone and system-audio transcripts and Stop & Save. Google Calendar sign-in was verified in the installed app. Actual meeting-app sessions and Windows still require live validation. The data folder and bundle ID retain their original CallDesk identifiers so preview upgrades preserve stored calls and permissions.
 
