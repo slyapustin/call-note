@@ -1,0 +1,27 @@
+.settings-dialog{width:min(780px,calc(100vw - 40px));max-width:780px;padding:0;line-height:1.5;overflow:hidden;box-shadow:0 18px 65px var(--shadow)}
+.settings-header{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--line)}
+.settings-header h2{margin:0;font-size:17px;letter-spacing:0}
+.settings-dialog button{font-size:13px;padding:7px 12px}
+.settings-layout{display:grid;grid-template-columns:160px minmax(0,1fr);height:min(550px,calc(100dvh - 150px));min-height:260px}
+.settings-nav{background:var(--sidebar);border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:4px;overflow:auto}
+.settings-nav button{text-align:left;border-color:transparent;padding:9px 12px}
+.settings-nav button[aria-selected=true]{background:var(--selected);font-weight:600}
+.settings-content{overflow:auto;padding:24px;min-width:0;scrollbar-gutter:stable}
+.settings-content h3{margin:0 0 16px;font-size:20px;font-weight:600;letter-spacing:-.3px}
+.settings-description{margin:0 0 18px;color:var(--muted);font-size:13px;max-width:62ch}
+.settings-row{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:16px 0;border-bottom:1px solid var(--line)}
+.settings-row>div{min-width:0}
+.settings-row label,.settings-row strong{font-weight:550;font-size:14px}
+.settings-row p{margin:5px 0 0;font-size:12px;color:var(--muted);max-width:40ch}
+.settings-row select{max-width:190px;flex-shrink:0;font-size:13px;background:var(--input);border:1px solid var(--control-border);border-radius:6px;padding:7px 9px}
+.settings-row button{flex-shrink:0}
+.settings-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.settings-footnote,.settings-path{font-size:12px;line-height:1.65;color:var(--muted);margin:16px 0}
+.settings-steps{font-size:13px;padding-left:22px;line-height:1.65;margin:18px 0}
+.settings-steps li+li{margin-top:9px}
+.settings-code-label{display:block;font-size:12px;font-weight:550;margin:18px 0 8px}
+.settings-dialog .settings-code{height:150px;min-height:100px;resize:vertical;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre;overflow:auto;tab-size:2}
+.settings-path code{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere;user-select:text}
+.settings-message{font-size:12px;line-height:1.65;padding:12px;border-radius:6px;background:var(--soft);margin:18px 0 0}
+.settings-message[data-error=true]{background:var(--notice);color:var(--notice-text);border:1px solid var(--notice-border)}
+@media(max-width:620px){.settings-dialog{width:calc(100vw - 24px)}.settings-layout{grid-template-columns:125px minmax(0,1fr)}.settings-content{padding:18px}.settings-row{align-items:flex-start;flex-direction:column;gap:10px}.settings-nav{padding:12px 6px}.settings-nav button{padding:9px}.settings-header{padding:13px 18px}}

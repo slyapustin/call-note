@@ -88,15 +88,17 @@ Once connected, it refreshes the primary calendar, expands recurring events and 
 `service/call_mcp.py` runs independently over stdio, without loading the model or accessing a microphone. Tools: `list_calls`, `get_call`, `save_call_analysis`. Prompt: `analyze_call`. Assistant analyses are versioned and do not replace transcript text.
 
 ```bash
-.venv/bin/python service/connect_mcp.py --dry-run
 .venv/bin/python service/connect_mcp.py
 ```
 
-In the installed app, open **Connect your assistant → Connect Codex & Claude**. This adds `call-note` to `~/.codex/config.toml` and Claude Desktop's config, preserving existing settings and writing timestamped backups. Restart those clients to load it. For Claude Code, run:
+The command prints instructions and configuration snippets only. `--dry-run` remains accepted for compatibility and has the same print-only behavior. It never reads or modifies assistant settings, creates configuration directories, or writes backups. The command uses the Python interpreter running it; `CALL_NOTE_PYTHON` can supply an explicit executable path when generating instructions for another installation.
 
-```bash
-claude mcp add --transport stdio call-note -- /absolute/path/to/phonon-poc/.venv/bin/python -B /absolute/path/to/phonon-poc/service/call_mcp.py
-```
+In the app, open the assistant setup instructions and choose Codex or Claude Desktop. Copy its snippet and apply it yourself; the installed app supplies its bundled Python and MCP server paths. Keep Call Note in the same location after setup, or update the paths in your assistant configuration after moving it.
+
+- **Codex:** Add the displayed `[mcp_servers.call-note]` section to `~/.codex/config.toml`, preserving other settings. If that section already exists, update its `command` and `args` rather than adding a duplicate. See the [official Codex MCP configuration guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+- **Claude Desktop:** Choose **Settings → Developer → Edit Config**. For a new, empty configuration, use the complete JSON example. For an existing configuration, merge only `call-note` into `mcpServers`, preserving other servers and settings. See the [official local MCP server guide](https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-local-servers).
+
+Save the configuration and restart the selected assistant. Call Note does not inspect whether an assistant is configured or connected, and opening or copying setup instructions does not grant library access by itself.
 
 Example: “Use Call Note to find my latest call, summarize decisions and action items with segment citations, and save the analysis.”
 

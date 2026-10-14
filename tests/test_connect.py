@@ -1,32 +1,61 @@
+import builtins
 import json
+from pathlib import Path
+import subprocess
+import sys
 import tomllib
-from connect_mcp import plans, ENTRY
 
-def test_connections_preserve_existing_settings(tmp_path):
-    codex=tmp_path/'.codex/config.toml';codex.parent.mkdir()
-    codex.write_text('model = "existing-model"\n[mcp_servers.keep]\ncommand = "keep"\n')
-    claude=tmp_path/'Library/Application Support/Claude/claude_desktop_config.json';claude.parent.mkdir(parents=True)
-    claude.write_text(json.dumps({'preferences':{'theme':'dark'},'mcpServers':{'keep':{'command':'keep'}}}))
-    changes=plans(tmp_path)
-    assert len(changes)==2
-    for path,text in changes:path.write_text(text)
-    assert tomllib.loads(codex.read_text())['mcp_servers']['keep']['command']=='keep'
-    assert json.loads(claude.read_text())['preferences']['theme']=='dark'
-    assert json.loads(claude.read_text())['mcpServers']['call-note']==ENTRY
-    assert plans(tmp_path)==[]
+import pytest
+from connect_mcp import build_setup
 
 
-def test_reinstall_updates_only_call_note(tmp_path, monkeypatch):
+@pytest.mark.parametrize('folder', ['Call Note.app', 'Call "Note" \\ app', 'Łódź 日本語 🎙️', 'newline\n tab\t delete\x7f'])
+def test_snippets_round_trip_unusual_paths(tmp_path, folder):
+    python = f'/Applications/{folder}/Contents/Resources/python/bin/python3.13'
+    server = f'/Applications/{folder}/Contents/Resources/service/call_mcp.py'
+    setup = build_setup(tmp_path, python, server)
+    expected = {'command': python, 'args': ['-B', server]}
+    assert tomllib.loads(setup['clients'][0]['snippet']) == {'mcp_servers': {'call-note': expected}}
+    assert json.loads(setup['clients'][1]['snippet']) == {'mcpServers': {'call-note': expected}}
+    assert 'preserving your existing settings' in ' '.join(setup['clients'][0]['steps'])
+    assert 'merge only the call-note entry' in ' '.join(setup['clients'][1]['steps'])
+
+
+def test_builder_does_not_read_existing_configs_or_touch_filesystem(tmp_path, monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError('MCP instruction generation must not access files')
+    for method in ['open', 'read_text', 'read_bytes', 'write_text', 'write_bytes', 'mkdir', 'exists']:
+        monkeypatch.setattr(Path, method, forbidden)
+    monkeypatch.setattr(builtins, 'open', forbidden)
+    setup = build_setup(tmp_path)
+    assert [client['id'] for client in setup['clients']] == ['codex', 'claude']
+    assert setup['clients'][0]['configPath'].endswith('/.codex/config.toml')
+
+
+@pytest.mark.parametrize('arguments', [[], ['--dry-run']])
+@pytest.mark.parametrize('existing', [False, True])
+def test_cli_only_prints_instructions_without_creating_or_changing_configs(tmp_path, arguments, existing):
+    home = tmp_path / 'home'
+    home.mkdir()
+    if existing:
+        codex = home / '.codex/config.toml'
+        codex.parent.mkdir()
+        codex.write_text('PRIVATE_SECRET invalid TOML which must not be read')
+        claude = home / 'Library/Application Support/Claude/claude_desktop_config.json'
+        claude.parent.mkdir(parents=True)
+        claude.write_text('PRIVATE_SECRET invalid JSON which must not be read')
+    before = {str(path.relative_to(home)): (path.read_bytes(), path.stat().st_mtime_ns) for path in home.rglob('*') if path.is_file()}
+    entries = sorted(str(path.relative_to(home)) for path in home.rglob('*'))
+    script = Path(__file__).resolve().parents[1] / 'service/connect_mcp.py'
+    launcher = 'import pathlib,runpy,sys; script=sys.argv.pop(1); home=sys.argv.pop(1); pathlib.Path.home=classmethod(lambda cls:pathlib.Path(home)); sys.argv[0]=script; runpy.run_path(script,run_name="__main__")'
+    result = subprocess.run([sys.executable, '-B', '-c', launcher, str(script), str(home), *arguments], text=True, capture_output=True, check=True)
+    assert 'manual instructions only' in result.stdout
+    assert 'No assistant configuration files were read or changed' in result.stdout
+    assert 'PRIVATE_SECRET' not in result.stdout + result.stderr
+    assert sorted(str(path.relative_to(home)) for path in home.rglob('*')) == entries
+    assert {str(path.relative_to(home)): (path.read_bytes(), path.stat().st_mtime_ns) for path in home.rglob('*') if path.is_file()} == before
+
+
+def test_no_longer_exposes_an_automatic_mutation_plan():
     import connect_mcp
-    monkeypatch.setattr(connect_mcp,'ENTRY',{'command':'/Applications/Call Note.app/Contents/Resources/python/bin/python3.11','args':['-B','/Applications/Call Note.app/Contents/Resources/service/call_mcp.py']})
-    original=plans(tmp_path)
-    for path,text in original:
-        path.parent.mkdir(parents=True,exist_ok=True)
-        path.write_text(text)
-    updated={'command':'/Applications/Call Note.app/Contents/Resources/python/bin/python3.13','args':['-B','/Applications/Call Note.app/Contents/Resources/service/call_mcp.py']}
-    monkeypatch.setattr(connect_mcp,'ENTRY',updated)
-    changes=plans(tmp_path)
-    assert len(changes)==2
-    for path,text in changes:path.write_text(text)
-    assert plans(tmp_path)==[]
-    assert tomllib.loads((tmp_path/'.codex/config.toml').read_text())['mcp_servers']['call-note']==updated
+    assert not hasattr(connect_mcp, 'plans')

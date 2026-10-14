@@ -28,6 +28,14 @@ app.whenReady().then(async () => {
   const exportDiagnostics = createDiagnosticsExporter({dialog,shell,getWindow:()=>window,diagnostics,downloads:app.getPath('downloads'),getState:()=>({recording,updatePhase:updates?.status().phase})});
   const {ThemePreference} = require('./theme.cjs');
   const theme = new ThemePreference({directory:data, nativeTheme});
+  const {registerSettings}=require('./settings.cjs');
+  const {buildMcpSetup}=require('./mcp-setup.cjs');
+  const settings=registerSettings({ipcMain,trusted,theme,getReminders:()=>reminders,exportDiagnostics,
+    getMcpSetup:()=>buildMcpSetup({python,server:path.join(serviceRoot,'call_mcp.py'),home:app.getPath('home')}),
+    openExternal:url=>shell.openExternal(url),notify:state=>{
+      for(const source of ['system','light','dark']){const item=Menu.getApplicationMenu()?.getMenuItemById('appearance-'+source);if(item)item.checked=state.appearance===source;}
+      if(window&&!window.isDestroyed())window.webContents.send('settings:changed',state);
+    }});
   const windowBackground=()=>nativeTheme.shouldUseDarkColors?'#151c18':'#f6f5f1';
   nativeTheme.on('updated',()=>{if(window&&!window.isDestroyed())window.setBackgroundColor(windowBackground());});
   const {Introduction} = require('./introduction.cjs');
@@ -39,13 +47,14 @@ app.whenReady().then(async () => {
   const openReleases=()=>shell.openExternal(updatesURL);
   ipcMain.handle('updates:downloads', event=>{if(!trusted(event))throw Error('Untrusted window');return openReleases();});
   const openUpdates=()=>{window?.show();window?.webContents.send('updates:open');};
+  const openSettings=()=>{showWindow();window?.webContents.send('settings:open','general');};
   const appearanceItems=[['system','System'],['light','Light'],['dark','Dark']].map(([source,label])=>({
-    label,type:'radio',checked:theme.source===source,click:()=>{
-      if(!theme.set(source).persisted)dialog.showErrorBox('Appearance setting','The appearance changed for this session, but could not be saved. Try again after checking that your user Library is writable.');
+    id:'appearance-'+source,label,type:'radio',checked:theme.source===source,click:()=>{
+      try{settings.setAppearance(source);}catch(error){dialog.showErrorBox('Appearance setting',error.message);}
     }
   }));
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    {label:'Call Note',submenu:[{role:'about'},{label:'Check for Updates…',click:openUpdates},{type:'separator'},{role:'services'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{role:'quit'}]},
+    {label:'Call Note',submenu:[{role:'about'},{label:'Settings…',accelerator:'CmdOrCtrl+,',click:openSettings},{label:'Check for Updates…',click:openUpdates},{type:'separator'},{role:'services'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{role:'quit'}]},
     {role:'editMenu'},{label:'View',submenu:[{role:'reload'},{role:'forceReload'},{role:'toggleDevTools'},{type:'separator'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{type:'separator'},{role:'togglefullscreen'},{type:'separator'},{label:'Appearance',submenu:appearanceItems}]},{role:'windowMenu'},{role:'help',submenu:[{label:'Quick Tour',click:()=>openIntroduction('tour')},{label:"What's New",click:()=>openIntroduction('news')},{type:'separator'},{label:'Export Diagnostics…',click:exportDiagnostics},{label:'Downloads & Release Notes',click:openReleases}]}
   ]));
 
@@ -90,14 +99,6 @@ app.whenReady().then(async () => {
       callback({video:sources[0], audio:'loopback'});
     } catch { callback({}); }
   });
-  ipcMain.handle('connect-assistants', async event => {
-    if (!trusted(event)) throw Error('Untrusted window');
-    return new Promise((resolve,reject)=>{
-      const child=spawn(python,[path.join(serviceRoot,'connect_mcp.py')],{cwd:root,env:{...environment,CALL_NOTE_PYTHON:python}});
-      let output='';child.stdout.on('data',data=>output+=data);child.stderr.on('data',data=>output+=data);
-      child.on('error',reject);child.on('exit',code=>code===0?resolve(output):reject(Error(output)));
-    });
-  });
   ipcMain.handle('session', event => { if (!trusted(event)) throw Error('Untrusted window'); return {token, platform:process.platform, version:app.getVersion()}; });
   ipcMain.handle('microphone', async event => {
     if (!trusted(event)) throw Error('Untrusted window');
@@ -116,7 +117,7 @@ app.whenReady().then(async () => {
   const {Tray,nativeImage,Notification,powerMonitor}=require('electron');
   const reminderAction=action=>Promise.resolve().then(action).catch(()=>dialog.showErrorBox('Call Note Calendar','Could not complete this action. Open Call Note and try again.'));
   callTray=new CallTray({Tray,Menu,nativeImage,version:app.getVersion(),show:showWindow,
-    join:key=>reminderAction(()=>reminders.join(key)),setReminder:seconds=>reminderAction(()=>reminders.setLead(seconds)),
+    join:key=>reminderAction(()=>reminders.join(key)),setReminder:seconds=>reminderAction(()=>settings.setReminder(seconds)),
     start:()=>{showWindow();window.webContents.send('tray:start');},
     stop:()=>window.webContents.send('tray:stop'),quit:()=>app.quit()});
   const {MeetingReminders}=require('./meeting-reminders.cjs');
