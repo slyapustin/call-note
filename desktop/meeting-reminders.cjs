@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const MENU_COUNTDOWN_WINDOW_MS = 60 * 60000;
 function meetingKey(event) { return JSON.stringify([event.calendar_id||'primary',event.id,event.start]); }
 function accountEmail(value) {
   return typeof value==='string'&&value.length<=254&&/^[^\s@/?#&]+@[^\s@/?#&]+\.[^\s@/?#&]+$/.test(value)?value.toLowerCase():'';
@@ -59,8 +60,8 @@ class MeetingReminders {
   snapshot() {
     const now=this.now();
     const events=this.events.filter(e=>Date.parse(e.end)>now).sort((a,b)=>Date.parse(a.start)-Date.parse(b.start));
-    const next=events.find(e=>Date.parse(e.start)>=now&&Date.parse(e.start)-now<=15*60000)||events.find(e=>Date.parse(e.start)<=now&&Date.parse(e.start)>now-5*60000);
-    const title=next&&Date.parse(next.start)-now<=15*60000?(Date.parse(next.start)>now?`Call ${timing(next,now).toLowerCase()}`:'Call now'):'';
+    const next=events.find(e=>Date.parse(e.start)>=now&&Date.parse(e.start)-now<=MENU_COUNTDOWN_WINDOW_MS)||events.find(e=>Date.parse(e.start)<=now&&Date.parse(e.start)>now-5*60000);
+    const title=next&&Date.parse(next.start)-now<=MENU_COUNTDOWN_WINDOW_MS?(Date.parse(next.start)>now?`Call ${timing(next,now).toLowerCase()}`:'Call now'):'';
     return {connected:this.connected,unavailable:this.unavailable,leadSeconds:this.leadSeconds,title,
       events:events.slice(0,5).map(event=>({...event,key:meetingKey(event),timing:timing(event,now),canJoin:!!joinURL(event.meeting_url)}))};
   }

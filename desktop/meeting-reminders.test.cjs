@@ -60,3 +60,18 @@ test('both notification and tray joins retain the connected account hint',async 
   assert.equal(f.opened.length,2);
   for(const opened of f.opened)assert.equal(new URL(opened).searchParams.get('authuser'),'work@example.com');
 });
+
+test('menu countdown shows calls within an hour without notifying early',async t=>{
+  const f=fixture(t);
+  for(const minutes of [26,60]) {
+    f.events([f.event(minutes*60)]);await f.reminders.refresh();
+    assert.equal(f.reminders.snapshot().title,`Call in ${minutes} min`);
+    assert.equal(f.notices.length,0);
+  }
+  f.events([f.event(3601)]);await f.reminders.refresh();
+  assert.equal(f.reminders.snapshot().title,'');
+  assert.equal(f.reminders.snapshot().events.length,1);
+  f.time(1);f.reminders.tick();
+  assert.equal(f.reminders.snapshot().title,'Call in 60 min');
+  assert.equal(f.notices.length,0);
+});
