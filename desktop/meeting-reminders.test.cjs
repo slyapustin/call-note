@@ -45,3 +45,18 @@ test('overlapping meetings each notify once; failed refresh clears stale meeting
   f.reminders.loadEvents=async()=>{throw Error('offline');};await assert.rejects(f.reminders.refresh());
   assert.equal(f.reminders.snapshot().events.length,0);assert.equal(f.reminders.snapshot().unavailable,true);
 });
+test('Google account routing preserves meeting parameters and never sends identity to other hosts',()=>{
+  const url=new URL(joinURL('https://meet.google.com/abc-defg-hij?authuser=0&authuser=1&hs=122#details','work+calls@example.com'));
+  assert.deepEqual(url.searchParams.getAll('authuser'),['work+calls@example.com']);
+  assert.equal(url.searchParams.get('hs'),'122');assert.equal(url.hash,'#details');
+  for(const target of ['https://zoom.us/j/123?pwd=secret','https://teams.microsoft.com/l/meetup-join/123','https://meet.google.com.evil.example/abc','https://meet.google.com:444/abc','https://other.example/?next=https://meet.google.com/abc'])assert.equal(joinURL(target,'work@example.com'),target);
+  for(const target of ['http://meet.google.com/abc','https://user:password@meet.google.com/abc','javascript:alert(1)'])assert.equal(joinURL(target,'work@example.com'),null);
+  for(const identity of ['1','not an email','bad\n@example.com',null,{}])assert.equal(joinURL('https://meet.google.com/abc',identity),'https://meet.google.com/abc');
+});
+test('both notification and tray joins retain the connected account hint',async t=>{
+  const f=fixture(t),event=f.event(30,{meeting_url:joinURL('https://meet.google.com/abc-defg-hij?authuser=0','work@example.com')});
+  f.events([event]);await f.reminders.refresh();
+  await f.notices[0].activate();await f.reminders.join(meetingKey(event));
+  assert.equal(f.opened.length,2);
+  for(const opened of f.opened)assert.equal(new URL(opened).searchParams.get('authuser'),'work@example.com');
+});

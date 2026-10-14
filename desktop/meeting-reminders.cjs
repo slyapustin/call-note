@@ -1,8 +1,17 @@
 const fs = require('node:fs');
 const path = require('node:path');
 function meetingKey(event) { return JSON.stringify([event.calendar_id||'primary',event.id,event.start]); }
-function joinURL(value) {
-  try {const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password?url.href:null;} catch {return null;}
+function accountEmail(value) {
+  return typeof value==='string'&&value.length<=254&&/^[^\s@/?#&]+@[^\s@/?#&]+\.[^\s@/?#&]+$/.test(value)?value.toLowerCase():'';
+}
+function joinURL(value,googleAccount='') {
+  try {
+    const url=new URL(value);
+    if(url.protocol!=='https:'||url.username||url.password)return null;
+    const email=accountEmail(googleAccount);
+    if(url.origin==='https://meet.google.com'&&email)url.searchParams.set('authuser',email);
+    return url.href;
+  } catch {return null;}
 }
 function timing(event,now) {
   const seconds=Math.ceil((Date.parse(event.start)-now)/1000);
@@ -81,4 +90,4 @@ class MeetingReminders {
   }
   stop() {clearInterval(this.refreshTimer);clearInterval(this.tickTimer);this.reset();}
 }
-module.exports={MeetingReminders,meetingKey,joinURL};
+module.exports={MeetingReminders,meetingKey,joinURL,accountEmail};

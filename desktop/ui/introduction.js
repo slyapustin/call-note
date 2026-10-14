@@ -27,8 +27,8 @@ export function setupIntroduction({bridge, version, canOpen, onError}) {
   function render() {
     const isTour = kind === 'tour';
     get('eyebrow').textContent = isTour ? `A quick tour · ${step + 1} of ${tour.length}` : `What’s new in Call Note ${version}`;
-    get('title').textContent = isTour ? tour[step].title : 'A fresh look. A quicker start.';
-    get('description').textContent = isTour ? tour[step].description : 'Settle into light or dark mode, explore a quick tour, and catch up on what’s new after an update.';
+    get('title').textContent = isTour ? tour[step].title : 'Copy, join, and share.';
+    get('description').textContent = isTour ? tour[step].description : 'Copy analysis prompts, export a diagnostics report, and open Google Meet with your connected Calendar account.';
     get('detail').textContent = isTour ? tour[step].detail : 'This screen appears once after each app update. Reopen it anytime from Help → What’s New.';
     for (const preview of dialog.querySelectorAll('[data-preview]')) preview.hidden = preview.dataset.preview !== (isTour ? tour[step].preview : 'news');
     get('back').hidden = !isTour || step === 0;

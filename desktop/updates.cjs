@@ -1,6 +1,6 @@
 class Updates {
-  constructor({updater, nativeUpdater, enabled, notify, isRecording}) {
-    Object.assign(this, {updater, enabled, notify, isRecording});
+  constructor({updater, nativeUpdater, enabled, notify, isRecording, onError=()=>{}}) {
+    Object.assign(this, {updater, enabled, notify, isRecording, onError});
     this.state = {phase:'idle', message:'Call Note checks for updates automatically.'};
     updater.logger = null;
     updater.autoDownload = true;
@@ -20,6 +20,7 @@ class Updates {
   set(value) { Object.assign(this.state, value); this.notify(this.status()); }
   status() { return {...this.state, enabled:this.enabled}; }
   failure(error) {
+    this.onError(error);
     if (['ERR_UPDATER_CHANNEL_FILE_NOT_FOUND','ERR_UPDATER_NO_PUBLISHED_VERSIONS'].includes(error?.code)) {
       this.set({phase:'unavailable', message:'Automatic-update packages are not available yet. Use View downloads to get the latest test build. Your installed app has not changed.'});
     } else {

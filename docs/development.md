@@ -145,3 +145,14 @@ Speaker detection uses sherpa-onnx 1.13.8, pyannote segmentation-3.0, and 3D-Spe
 Samples are segmented before Phonon transcribes each turn. Live system audio is segmented when the rolling decoder finalizes a phrase (silence or the 30-second limit); draft words appear first, then speaker-labeled turns. A per-call voice matcher keeps numbers consistent across phrases. Audio buffers are bounded by the rolling segment; voice embeddings stay in memory and are discarded with the call. The microphone remains You. No speaker names or genders are inferred. Speaker numbers start again for each call.
 
 Labels are estimates, especially with short remarks, similar voices, noise, or overlapping speech. Unknown voices retain the source label. The text is retained if phrase-level speaker detection fails. Saved calls from earlier versions cannot be retroactively diarized because audio was not retained; rerun a bundled sample to create a newly labeled transcript. Speaker fields are included in MCP and Markdown exports.
+
+
+## Diagnostics and support
+
+From version 0.2.6, use **Help → Export Diagnostics…**. The native save dialog writes a text report that the user can review and attach to a support conversation or GitHub issue. Nothing is sent automatically. It contains runtime versions, update/recording state, the latest 100 sanitized error events, and fixed error counts from at most the last 64 KiB of `service.log`. It omits raw messages, stacks, paths, transcripts, notes, Calendar details and credentials. `diagnostics.jsonl` stores only sanitized categories locally.
+
+For 0.2.5 and earlier, Finder → Go to Folder → `~/Library/Application Support/CallDesk/` contains `service.log`. Review it before sharing; never upload the entire data directory, database or Calendar credential files.
+
+The renderer copies analysis prompts through a narrowly scoped native clipboard IPC handler. It does not request broad browser clipboard access or expose clipboard reads.
+
+Meet join links use `authuser=<email>` only for the exact `https://meet.google.com` origin. The email comes from a unique self attendee/organizer in primary-calendar events, using the existing events-only scope. Missing or conflicting identity is not guessed; other providers receive no Google account hint. This avoids hardcoding browser `/0/` and `/1/` positions. URL construction is unit-tested; Google Meet's browser account selection requires a live check.

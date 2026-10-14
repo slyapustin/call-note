@@ -1,4 +1,4 @@
-const {app, BrowserWindow, session, desktopCapturer, ipcMain, dialog, systemPreferences, safeStorage, shell, Menu, nativeTheme} = require('electron');
+const {app, BrowserWindow, session, desktopCapturer, ipcMain, dialog, systemPreferences, safeStorage, shell, Menu, nativeTheme, clipboard} = require('electron');
 const {spawn} = require('node:child_process');
 const {randomBytes} = require('node:crypto');
 const fs = require('node:fs');
@@ -21,6 +21,11 @@ app.on('activate', showWindow);
 function trusted(event) { return event.sender === window?.webContents && event.senderFrame?.url.startsWith(origin + '/'); }
 app.whenReady().then(async () => {
   const data = app.getPath('userData');
+  const {Diagnostics} = require('./diagnostics.cjs');
+  const diagnostics = new Diagnostics({directory:data,version:app.getVersion(),versions:process.versions,platform:process.platform,arch:process.arch,osRelease:require('node:os').release()});
+  const {registerSupport,createDiagnosticsExporter} = require('./support.cjs');
+  registerSupport({ipcMain,clipboard,trusted,diagnostics});
+  const exportDiagnostics = createDiagnosticsExporter({dialog,shell,getWindow:()=>window,diagnostics,downloads:app.getPath('downloads'),getState:()=>({recording,updatePhase:updates?.status().phase})});
   const {ThemePreference} = require('./theme.cjs');
   const theme = new ThemePreference({directory:data, nativeTheme});
   const windowBackground=()=>nativeTheme.shouldUseDarkColors?'#151c18':'#f6f5f1';
@@ -41,7 +46,7 @@ app.whenReady().then(async () => {
   }));
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {label:'Call Note',submenu:[{role:'about'},{label:'Check for Updates…',click:openUpdates},{type:'separator'},{role:'services'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{role:'quit'}]},
-    {role:'editMenu'},{label:'View',submenu:[{role:'reload'},{role:'forceReload'},{role:'toggleDevTools'},{type:'separator'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{type:'separator'},{role:'togglefullscreen'},{type:'separator'},{label:'Appearance',submenu:appearanceItems}]},{role:'windowMenu'},{role:'help',submenu:[{label:'Quick Tour',click:()=>openIntroduction('tour')},{label:"What's New",click:()=>openIntroduction('news')},{type:'separator'},{label:'Downloads & Release Notes',click:openReleases}]}
+    {role:'editMenu'},{label:'View',submenu:[{role:'reload'},{role:'forceReload'},{role:'toggleDevTools'},{type:'separator'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{type:'separator'},{role:'togglefullscreen'},{type:'separator'},{label:'Appearance',submenu:appearanceItems}]},{role:'windowMenu'},{role:'help',submenu:[{label:'Quick Tour',click:()=>openIntroduction('tour')},{label:"What's New",click:()=>openIntroduction('news')},{type:'separator'},{label:'Export Diagnostics…',click:exportDiagnostics},{label:'Downloads & Release Notes',click:openReleases}]}
   ]));
 
   const port = await new Promise(resolve => { const probe = net.createServer(); probe.listen(0, '127.0.0.1', () => { const port = probe.address().port; probe.close(() => resolve(port)); }); });
@@ -63,6 +68,7 @@ app.whenReady().then(async () => {
   const {MacUpdater} = require('electron-updater');
   const {Updates} = require('./updates.cjs');
   updates = new Updates({updater:new MacUpdater(), nativeUpdater:require('electron').autoUpdater, enabled:app.isPackaged && process.platform==='darwin', isRecording:()=>recording,
+    onError:error=>diagnostics.record('updater',error),
     notify:state=>window?.webContents.send('updates:state',state)});
   for (const action of ['status','check','install']) ipcMain.handle('updates:'+action, (event, value)=>{if(!trusted(event))throw Error('Untrusted window');return updates[action](value);});
   const log = fs.openSync(path.join(data, 'service.log'), 'a', 0o600);
@@ -72,8 +78,8 @@ app.whenReady().then(async () => {
   service = spawn(python, ['-m', 'uvicorn', 'call_app:app', '--host', '127.0.0.1', '--port', String(port), '--ws-max-size', '65536'], {
     cwd:serviceRoot, env:environment, stdio:['ignore', log, log]
   });
-  service.on('error', error => dialog.showErrorBox('Call Note service failed', error.message));
-  service.on('exit', code => { if (!quitting) dialog.showErrorBox('Call Note service stopped', `Exit ${code}. See ${path.join(data, 'service.log')}`); });
+  service.on('error', error => {diagnostics.record('service',error);dialog.showErrorBox('Call Note service failed', error.message);});
+  service.on('exit', code => { if (!quitting) {diagnostics.record('service',{name:'Error',message:'Service exited'});dialog.showErrorBox('Call Note service stopped', `Exit ${code}. See ${path.join(data, 'service.log')}`);} });
   session.defaultSession.setPermissionCheckHandler((contents, permission, requestingOrigin) => contents === window?.webContents && requestingOrigin === origin && ['media', 'display-capture'].includes(permission));
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(contents === window?.webContents && contents.getURL().startsWith(origin + '/') && ['media', 'display-capture'].includes(permission)));
   session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
@@ -126,7 +132,7 @@ app.whenReady().then(async () => {
   powerMonitor.on('suspend',()=>reminders.reset());
   powerMonitor.on('resume',async()=>{await reminders.pending?.catch(()=>{});reminders.refresh().catch(()=>{});});
   ipcMain.on('tray:state',(event,value)=>{if(trusted(event))callTray.update(value);});
-  window.webContents.on('render-process-gone',()=>{recording=false;callTray.update({phase:'idle',engine:'error'});});
+  window.webContents.on('render-process-gone',()=>{diagnostics.record('renderer',{name:'Error',code:'RENDERER_GONE'});recording=false;callTray.update({phase:'idle',engine:'error'});});
   let ready = false;
   for (let attempt=0;attempt<300;attempt++) {
     try { if ((await fetch(origin)).ok) {ready=true;break;} } catch {}

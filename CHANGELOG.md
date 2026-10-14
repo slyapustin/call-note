@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6 — 2026-10-14
+
+- Fixed Copy analysis prompt failing with browser clipboard permission errors by using the native Mac clipboard.
+- Added Help → Export Diagnostics to save a local text report with runtime versions, recent error categories, and service error counts. Transcripts, Calendar details, credentials and raw log text are omitted; nothing is uploaded automatically.
+- Added the connected Calendar account email to Google Meet join links when primary-calendar events identify the account, instead of relying on browser account order. Other meeting providers are unchanged. Browser account routing still needs live verification.
+
 ## 0.2.5 — 2026-10-14
 
 - Added Light, Dark, and System appearance options in View → Appearance. System follows macOS by default.
