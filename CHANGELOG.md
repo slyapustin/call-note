@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.8 — in development
+
+- Added a Windows x64 preview build with a bundled Python 3.13 CPU speech runtime and NSIS installer. Windows signing and live call-device validation are still pending; preview updates remain manual.
+- Load speech models only when needed. After two idle minutes, release models and gracefully recycle the local speech service to return native allocations to the operating system. Saved calls remain available after restart.
+- Release sample audio and capture resources when leaving a sample or ending a call.
+- Added Delete call with confirmation for saved calls, removing the transcript, notes, and analyses. Active calls cannot be deleted. Existing exports and backups are unaffected.
+
 ## 0.2.7 — 2026-10-14
 
 - Added Settings from the sidebar and Call Note → Settings (⌘,): appearance, Google Calendar, meeting reminders, assistant setup, and support.

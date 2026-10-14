@@ -1,13 +1,13 @@
 const tour = [
   {
     title: 'Your calls, written down.',
-    description: 'Start a call to transcribe your microphone and the voices you hear. Everything is processed on your Mac.',
+    description: 'Start a call to transcribe your microphone and the voices you hear. Everything is processed on your device.',
     detail: 'Recording starts only when you choose Start call. Use headphones for clearer results. Call Note saves the transcript, not the recording.',
     preview: 'voices',
   },
   {
     title: 'Be ready for the next call.',
-    description: 'Connect Google Calendar in Settings to match meeting details automatically. Your next meeting and a Join call action appear in the menu bar.',
+    description: 'Connect Google Calendar in Settings to match meeting details automatically. Your next meeting and a Join call action appear in the Call Note tray menu.',
     detail: 'Choose a reminder one minute or 30 seconds before a meeting. Joining opens the meeting link; transcription still starts manually. Google sign-in currently requires an approved test account.',
     preview: 'calendar',
   },

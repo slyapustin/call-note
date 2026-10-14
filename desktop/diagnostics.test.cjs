@@ -27,7 +27,7 @@ test('clipboard failures are actionable without exporting the message, stack or 
   assert.match(report, /Update phase: error/);
   assert.doesNotMatch(report, /private-call|writeText|secret source|person@example/);
   assert.doesNotMatch(fs.readFileSync(path.join(directory, 'diagnostics.jsonl'), 'utf8'), /private-call|writeText|secret source|person@example/);
-  assert.equal(fs.statSync(path.join(directory, 'diagnostics.jsonl')).mode & 0o777, 0o600);
+  if(process.platform!=='win32')assert.equal(fs.statSync(path.join(directory, 'diagnostics.jsonl')).mode & 0o777, 0o600);
 });
 
 test('metadata, scopes, error fields and persisted events reject arbitrary strings', t => {

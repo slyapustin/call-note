@@ -1,5 +1,6 @@
 """Authenticated loopback service for the Call Note desktop shell."""
 import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 import json
 import os
@@ -20,6 +21,42 @@ from streaming import LiveTranscriber
 TOKEN = os.environ.get('CALL_DESK_TOKEN', secrets.token_urlsafe(32))
 store = None
 diarizer = None
+IDLE_SECONDS = max(1, int(os.environ.get('CALL_NOTE_IDLE_SECONDS', '120')))
+last_engine_use = time.monotonic()
+request_idle_exit = None
+
+def release_models():
+    global diarizer
+    diarizer = None
+    engine.unload()
+
+def engine_finished():
+    global last_engine_use
+    last_engine_use = time.monotonic()
+    engine.busy = False
+
+async def ensure_engine():
+    if engine.status != 'ready':
+        await engine_call(engine.ensure_loaded)
+
+async def release_if_idle(now=None):
+    now = time.monotonic() if now is None else now
+    if engine.busy or engine.status != 'ready' or now - last_engine_use < IDLE_SECONDS:
+        return False
+    engine.busy = True
+    try:
+        await engine_call(release_models)
+        return True
+    finally:
+        engine.busy = False
+
+async def idle_memory():
+    while True:
+        await asyncio.sleep(min(15, IDLE_SECONDS))
+        if await release_if_idle() and request_idle_exit is not None:
+            engine.busy = True
+            request_idle_exit()
+            return
 
 def speaker_session():
     global diarizer
@@ -46,10 +83,15 @@ async def lifespan(application):
     global store
     store = CallStore()
     store.recover()
-    loading = asyncio.get_running_loop().run_in_executor(engine.pool, engine.load)
-    yield
-    await loading
-    engine.pool.shutdown(wait=True)
+    idle = asyncio.create_task(idle_memory())
+    try:
+        yield
+    finally:
+        idle.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await idle
+        await engine_call(release_models)
+        engine.pool.shutdown(wait=True)
 
 app = FastAPI(title='Call Note', lifespan=lifespan)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=['127.0.0.1', 'localhost', 'testserver'])
@@ -71,6 +113,17 @@ def index():
 
 app.get('/api/status')(status)
 
+@app.post('/api/engine/prepare')
+async def prepare_engine():
+    if engine.busy:
+        raise HTTPException(409, 'Engine is busy.')
+    engine.busy = True
+    try:
+        await ensure_engine()
+        return status()
+    finally:
+        engine_finished()
+
 @app.get('/api/calls')
 def calls(q: str = '', offset: int = 0):
     return store.list(q, offset=offset)
@@ -88,9 +141,12 @@ def edit_call(call_id: str, edit: Edit):
     return store.update(call_id, edit.title, edit.notes)
 
 @app.delete('/api/calls/{call_id}')
-def archive(call_id: str):
-    store.archive(call_id)
-    return {'archived': True}
+def delete_call(call_id: str):
+    try:
+        store.delete(call_id)
+    except ValueError as error:
+        raise HTTPException(409, str(error)) from error
+    return {'deleted': True}
 
 @app.get('/api/calls/{call_id}/export')
 def export(call_id: str):
@@ -98,10 +154,11 @@ def export(call_id: str):
 
 @app.post('/api/demo')
 async def demo(sample: Literal['briefing', 'meeting'] = 'briefing'):
-    if engine.status != 'ready' or engine.busy:
+    if engine.busy:
         raise HTTPException(409, 'Engine is loading or busy.')
     engine.busy = True
     try:
+        await ensure_engine()
         filename, title, source = SAMPLES[sample]
         result = await engine_call(transcribe_sample, ROOT / 'samples' / filename, [])
         call = store.create(title, source)
@@ -110,7 +167,7 @@ async def demo(sample: Literal['briefing', 'meeting'] = 'briefing'):
         store.finish(call['id'], result['audio_seconds'])
         return store.get(call['id'])
     finally:
-        engine.busy = False
+        engine_finished()
 
 @app.get('/api/demo/audio')
 def demo_audio(sample: Literal['briefing', 'meeting'] = 'briefing'):
@@ -149,12 +206,13 @@ async def record(socket: WebSocket):
         config = await asyncio.wait_for(socket.receive_json(), timeout=10)
         if not isinstance(config, dict) or not isinstance(config.get('token'), str) or not secrets.compare_digest(config['token'], TOKEN):
             raise ValueError('Desktop authentication required.')
-        if engine.status != 'ready' or engine.busy:
+        if engine.busy:
             raise ValueError('Engine is loading or busy.')
         sources = config.get('sources')
         if not isinstance(sources, list) or not sources or len(set(sources)) != len(sources) or any(s not in ('microphone', 'system') for s in sources):
             raise ValueError('Choose microphone, system audio, or both.')
         engine.busy = owned = True
+        await ensure_engine()
         event = config.get('calendar_event')
         if event is not None and (not isinstance(event, dict) or len(json.dumps(event)) > 30000):
             raise ValueError('Invalid calendar event metadata.')
@@ -226,7 +284,8 @@ async def record(socket: WebSocket):
                     pass
             store.finish(call['id'], time.monotonic()-started, 'interrupted')
         if owned:
-            engine.busy = False
+            sessions.clear()
+            engine_finished()
 
 app.mount('/ui', StaticFiles(directory=ROOT / 'desktop/ui'), name='ui')
 app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')

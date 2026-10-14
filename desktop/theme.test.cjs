@@ -30,7 +30,7 @@ test('light, dark, and system choices apply natively and survive restart', t => 
     assert.equal(new ThemePreference({...options, nativeTheme}).source, source);
     assert.equal(nativeTheme.themeSource, source);
   }
-  assert.equal(fs.statSync(path.join(options.directory, 'theme.json')).mode & 0o777, 0o600);
+  if(process.platform!=='win32')assert.equal(fs.statSync(path.join(options.directory, 'theme.json')).mode & 0o777, 0o600);
 });
 
 test('malformed, unsupported, and unreadable preferences fall back to system', t => {

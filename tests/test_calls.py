@@ -212,3 +212,35 @@ def test_live_phrase_timestamps_exclude_idle_silence():
     final=[event for event in events if event['type']=='final'][0]
     assert final['start']==pytest.approx(2.)
     assert final['end']==pytest.approx(3.)
+
+
+def test_permanent_delete_removes_call_children_and_preserves_other_calls(tmp_path):
+    store = CallStore(tmp_path)
+    target = store.create('Delete me', calendar_event={'title': 'Meeting'})
+    other = store.create('Keep me')
+    for call in [target, other]:
+        store.append(call['id'], 'microphone', 0, 1, 'Saved transcript')
+        store.update(call['id'], notes='Saved notes')
+        store.save_analysis(call['id'], 'Saved analysis', 'Codex')
+        store.finish(call['id'], 1)
+    store.delete(target['id'])
+    with pytest.raises(KeyError):
+        store.get(target['id'])
+    assert store.get(other['id'])['notes'] == 'Saved notes'
+    with store.connect() as db:
+        for table, column in [('calls', 'id'), ('segments', 'call_id'), ('analyses', 'call_id')]:
+            assert db.execute(f'SELECT COUNT(*) FROM {table} WHERE {column}=?', (target['id'],)).fetchone()[0] == 0
+            assert db.execute(f'SELECT COUNT(*) FROM {table} WHERE {column}=?', (other['id'],)).fetchone()[0] == 1
+
+
+def test_delete_api_rejects_active_call_and_requires_authentication(client):
+    call = call_app.store.create('Active')
+    call_app.store.append(call['id'], 'microphone', 0, 1, 'Keep live transcript')
+    url = '/api/calls/' + call['id']
+    assert client.delete(url, headers={'x-call-token': ''}).status_code == 401
+    assert client.delete(url).status_code == 409
+    assert call_app.store.get(call['id'])['segments'][0]['text'] == 'Keep live transcript'
+    call_app.store.finish(call['id'], 1)
+    assert client.delete(url).json() == {'deleted': True}
+    assert client.get(url).status_code == 404
+    assert client.delete(url).status_code == 404

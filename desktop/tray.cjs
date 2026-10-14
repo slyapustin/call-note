@@ -4,17 +4,18 @@ function elapsed(seconds) {
 }
 function presentation(state) {
   const duration=elapsed(state.seconds);
-  const status=state.phase==='recording'?`Transcribing · ${duration}`:state.phase==='preparing'?'Preparing audio…':state.phase==='saving'?'Saving transcript…':state.engine==='ready'?(state.busy?'Processing audio…':'Ready for a call'):state.engine==='error'?'Transcription unavailable':'Loading speech model…';
+  const status=state.phase==='recording'?`Transcribing · ${duration}`:state.phase==='preparing'?'Preparing audio…':state.phase==='saving'?'Saving transcript…':state.engine==='ready'?(state.busy?'Processing audio…':'Ready for a call'):state.engine==='idle'?'Speech model resting · ready to start':state.engine==='error'?'Transcription unavailable':'Loading speech model…';
   return {status, title:state.phase==='recording'?`● ${duration}`:state.phase==='saving'?'Saving…':'',
-    canStart:state.phase==='idle'&&state.engine==='ready'&&!state.busy, canStop:state.phase==='recording'};
+    canStart:state.phase==='idle'&&['idle','ready'].includes(state.engine)&&!state.busy, canStop:state.phase==='recording'};
 }
 class CallTray {
-  constructor({Tray, Menu, nativeImage, show, start, stop, quit, join, setReminder, version}) {
-    this.Menu=Menu;this.actions={show,start,stop,quit,join,setReminder};this.version=version;
+  constructor({Tray, Menu, nativeImage, show, start, stop, quit, join, setReminder, version, platform=process.platform}) {
+    this.platform=platform;this.Menu=Menu;this.actions={show,start,stop,quit,join,setReminder};this.version=version;
     this.meetings={events:[],leadSeconds:60};
     this.state={phase:'idle',engine:'loading',busy:false,seconds:0,microphone:false,system:false};
-    const icon=nativeImage.createFromPath(path.join(__dirname,'assets/callNoteTemplate.png'));
-    icon.setTemplateImage(true);
+    let icon=nativeImage.createFromPath(path.join(__dirname,platform==='darwin'?'assets/callNoteTemplate.png':'assets/call-note.png'));
+    if(platform==='darwin')icon.setTemplateImage(true);
+    else icon=icon.resize({width:32,height:32});
     this.tray=new Tray(icon);
     this.tray.on('click',()=>this.tray.popUpContextMenu(this.menu()));
     this.tray.on('right-click',()=>this.tray.popUpContextMenu(this.menu()));
@@ -24,10 +25,10 @@ class CallTray {
     if (!value || typeof value!=='object') return;
     for (const key of ['busy','microphone','system']) if (typeof value[key]==='boolean') this.state[key]=value[key];
     if (['idle','preparing','recording','saving'].includes(value.phase)) this.state.phase=value.phase;
-    if (['loading','ready','error'].includes(value.engine)) this.state.engine=value.engine;
+    if (['idle','loading','ready','error'].includes(value.engine)) this.state.engine=value.engine;
     if (Number.isFinite(value.seconds)) this.state.seconds=Math.max(0,Math.floor(value.seconds));
     const view=presentation(this.state);
-    this.tray.setTitle(view.title||(this.state.phase==='idle'?this.meetings.title||'':''),{fontType:'monospacedDigit'});
+    if(this.platform==='darwin')this.tray.setTitle(view.title||(this.state.phase==='idle'?this.meetings.title||'':''),{fontType:'monospacedDigit'});
     const next=this.meetings.events[0];
     this.tray.setToolTip(`Call Note — ${view.status}${next?`\n${next.title} · ${next.timing}`:''}`);
   }
@@ -56,7 +57,7 @@ class CallTray {
       {label:'Open Call Note',click:this.actions.show},
       {label:'Start new call',enabled:view.canStart,click:()=>{if(!presentation(this.state).canStart)return;this.update({phase:'preparing'});this.actions.start();}},
       {label:'Stop & save call',enabled:view.canStop,click:()=>{if(!presentation(this.state).canStop)return;this.update({phase:'saving'});this.actions.stop();}},
-      {type:'separator'},{label:'Transcription stays on this Mac',enabled:false},
+      {type:'separator'},{label:'Transcription stays on this device',enabled:false},
       {label:`Version ${this.version}`,enabled:false},{label:'Quit Call Note',click:this.actions.quit}
     ]);
   }

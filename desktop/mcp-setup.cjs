@@ -12,7 +12,10 @@ function tomlString(value) {
   return JSON.stringify(value).replace(/\x7f/g, '\\u007f');
 }
 
-function buildMcpSetup({python, server, home}) {
+function buildMcpSetup({python, server, home, platform='darwin', appData}) {
+  setupPath(home);
+  const paths=platform==='win32'?path.win32:path.posix;
+  const claudeDirectory=platform==='win32'?paths.join(setupPath(appData || paths.join(home,'AppData','Roaming')),'Claude'):paths.join(home,'Library','Application Support','Claude');
   const command = setupPath(python);
   const args = ['-B', setupPath(server)];
   setupPath(home);
@@ -20,7 +23,7 @@ function buildMcpSetup({python, server, home}) {
     command, args,
     clients:[
       {
-        id:'codex', label:'Codex', configPath:path.join(home, '.codex', 'config.toml'),
+        id:'codex', label:'Codex', configPath:paths.join(home, '.codex', 'config.toml'),
         steps:[
           'Open the config.toml path shown below in a text editor.',
           'Add this section, preserving your existing settings and other servers. If [mcp_servers.call-note] already exists, update its command and args instead of adding a duplicate section.',
@@ -30,7 +33,7 @@ function buildMcpSetup({python, server, home}) {
         docsUrl:'https://learn.chatgpt.com/docs/extend/mcp?surface=cli',
       },
       {
-        id:'claude', label:'Claude Desktop', configPath:path.join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'),
+        id:'claude', label:'Claude Desktop', configPath:paths.join(claudeDirectory, 'claude_desktop_config.json'),
         steps:[
           'In the Claude Desktop menu, choose Settings → Developer → Edit Config.',
           'If the file is empty, use the full example below. Otherwise, merge only the call-note entry into the existing mcpServers object. Preserve your other servers and settings; do not replace the entire existing file.',

@@ -1,0 +1,119 @@
+name: Windows preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/windows-port]
+  pull_request:
+    paths:
+      - desktop/**
+      - service/**
+      - scripts/**
+      - requirements-windows.txt
+      - tests/**
+      - .github/workflows/windows-preview.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name != 'pull_request' || github.head_ref != 'feat/windows-port'
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      PYTHONDONTWRITEBYTECODE: '1'
+      FERMION_DEVICE: cpu
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.16'
+      - name: Install build tools
+        run: |
+          python -m pip install uv==0.13.0
+          npm ci --prefix desktop
+      - name: Desktop unit tests
+        run: |
+          $tests = Get-ChildItem desktop/*.test.cjs | ForEach-Object FullName
+          node --test $tests
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop tests failed' }
+      - name: Prepare runtime and create NSIS installer
+        run: npm run package:windows --prefix desktop
+      - name: Install and test the installed service
+        run: |
+          $installer = Get-ChildItem .build/windows-dist/Call-Note-*-Windows-x64.exe | Select-Object -First 1
+          if (!$installer) { throw 'Windows installer was not produced' }
+          $installDir = Join-Path $env:RUNNER_TEMP 'CallNoteInstalled'
+          $process = Start-Process -FilePath $installer.FullName -ArgumentList @('/S', "/D=$installDir") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer exited $($process.ExitCode)" }
+          if (!(Test-Path "$installDir/Call Note.exe")) { throw 'Installed app executable is missing' }
+          python scripts/windows_service_smoke.py --python "$installDir/resources/python/python.exe" --service "$installDir/resources/service"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed service smoke failed' }
+          $uninstaller = Get-ChildItem $installDir -Filter 'Uninstall*.exe' | Select-Object -First 1
+          if (!$uninstaller) { throw 'Uninstaller was not produced' }
+          $process = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Uninstaller exited $($process.ExitCode)" }
+      - name: Record artifact checksums
+        run: |
+          Get-ChildItem .build/windows-dist -File | Where-Object { $_.Extension -in '.exe', '.blockmap', '.yml' } | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Add-Content .build/windows-dist/SHA256SUMS.txt
+          }
+      - name: Upload unsigned Windows preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: Call-Note-Windows-x64-preview-${{ github.sha }}
+          path: |
+            .build/windows-dist/Call-Note-*-Windows-x64.exe
+            .build/windows-dist/*.blockmap
+            .build/windows-dist/latest.yml
+            .build/windows-dist/SHA256SUMS.txt
+            .build/bundle/service/bundle.json
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-preview:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/windows-port' && contains(github.event.head_commit.message, '[publish-windows-preview]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Call-Note-Windows-x64-preview-${{ github.sha }}
+          path: preview
+      - name: Verify installer and publish preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          root = Path('preview/windows-dist')
+          records = dict(line.split('  ', 1)[::-1] for line in (root / 'SHA256SUMS.txt').read_text().splitlines())
+          installer = root / 'Call-Note-0.2.8-Windows-x64.exe'
+          with installer.open('rb') as stream:
+              digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+          assert records[installer.name] == digest
+          (root / (installer.name + '.sha256')).write_text(f'{digest}  {installer.name}\n')
+          PY
+          gh release create v0.2.8-windows-preview --draft --prerelease --latest=false --target "$GITHUB_SHA" --title 'Call Note 0.2.8 — Windows preview' --notes-file docs/windows-preview-release.md
+          gh release upload v0.2.8-windows-preview preview/windows-dist/Call-Note-0.2.8-Windows-x64.exe preview/windows-dist/Call-Note-0.2.8-Windows-x64.exe.sha256
+          gh release edit v0.2.8-windows-preview --draft=false --prerelease --latest=false

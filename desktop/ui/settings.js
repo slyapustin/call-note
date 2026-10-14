@@ -125,7 +125,7 @@ export function setupSettings({bridge, version, refreshCalendar, openUpdates, be
       finally {calendarBusy = false; if (calendarState) renderCalendar(calendarState);}
     };
   }
-  get('calendar-connect').onclick = calendarAction(() => bridge.calendarConnect(), 'Calendar connected. Upcoming meetings are available from the menu bar.');
+  get('calendar-connect').onclick = calendarAction(() => bridge.calendarConnect(), 'Calendar connected. Upcoming meetings are available from the Call Note tray menu.');
   get('calendar-refresh').onclick = calendarAction(async () => {}, 'Meetings refreshed.');
   get('calendar-disconnect').onclick = calendarAction(() => bridge.calendarDisconnect(), 'Calendar disconnected. Saved calls are unchanged.');
   get('client').onchange = () => {message(); renderClient();};

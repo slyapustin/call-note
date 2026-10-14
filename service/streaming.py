@@ -10,6 +10,7 @@ class LiveTranscriber:
         self.last_audio = None
         self.audio_base = 0.0
         self.model = model
+        self.backend = model.describe().get("engine", "mlx") if hasattr(model, "describe") else None
         self.hotwords = hotwords
         self.decode_seconds = 0.0
         self.samples = 0
@@ -64,7 +65,7 @@ class LiveTranscriber:
     def finish(self):
         text = self.session.finish()
         duration = self.samples / 16000
-        return dict(type="complete", mode="live", text=text, model="phonon-2", backend="mlx",
+        return dict(type="complete", mode="live", text=text, model="phonon-2", backend=self.backend,
                     audio_seconds=duration, decode_seconds=self.decode_seconds,
                     processing_seconds=self.decode_seconds, conversion_seconds=0,
                     session_seconds=time.perf_counter() - self.started,

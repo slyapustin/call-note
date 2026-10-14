@@ -1,0 +1,31 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const source=fs.readFileSync(path.join(__dirname,'ui/app.js'),'utf8');
+test('capture release detaches ports and socket handlers and drops audio references',()=>{
+  const calls=[];
+  const context=vm.createContext({$:()=>({replaceChildren(){}}),window:{callDesk:{recording:value=>calls.push(value)}},clearInterval(){},timer:1,reportError(){}});
+  vm.runInContext(source.slice(source.indexOf('class Capture {'),source.indexOf('\nasync function finish('))+'\nthis.Capture=Capture;',context);
+  const capture=new context.Capture();
+  const port={onmessage:()=>{},close:()=>calls.push('port')};
+  const socket={onmessage:()=>{},onopen:()=>{},onerror:()=>{},onclose:()=>{},close:()=>calls.push('socket')};
+  capture.streams=[{stream:{getTracks:()=>[{stop:()=>calls.push('track')}]}}];
+  capture.nodes=[{port,flushed:()=>{},disconnect:()=>calls.push('node')}];
+  capture.contexts=[{close:()=>{calls.push('context');return Promise.resolve();}}];capture.socket=socket;
+  capture.release();capture.release();
+  assert.equal(port.onmessage,null);assert.equal(socket.onmessage,null);assert.equal(socket.onclose,null);
+  assert.equal(capture.streams.length,0);assert.equal(capture.nodes.length,0);assert.equal(capture.contexts.length,0);assert.equal(capture.socket,null);
+  for(const type of ['track','port','node','context','socket'])assert.equal(calls.filter(item=>item===type).length,1);
+});
+test('leaving a sample releases pending audio URLs without reattaching stale playback',async()=>{
+  let resolve;const revoked=[];let src='old';
+  const player={dataset:{},pause(){},removeAttribute(){src='';},load(){},set src(value){src=value;},get src(){return src;}};
+  const context=vm.createContext({$:()=>player,sampleKinds:{sample:'briefing'},sampleAudio:new Map(),current:{id:'one'},session:{token:'fixture'},fetch:()=>new Promise(done=>{resolve=done;}),URL:{createObjectURL:()=> 'blob:sample',revokeObjectURL:value=>revoked.push(value)}});
+  vm.runInContext(source.slice(source.indexOf('function clearSampleAudio()'),source.indexOf('\nasync function library(')),context);
+  const loading=context.loadSampleAudio({id:'one',source:'sample'});
+  context.clearSampleAudio();context.current=null;
+  resolve({ok:true,blob:async()=>({})});await loading;await Promise.resolve();
+  assert.deepEqual(revoked,['blob:sample']);assert.equal(src,'');assert.equal(player.hidden,true);assert.equal(context.sampleAudio.size,0);
+});
