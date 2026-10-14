@@ -16,6 +16,8 @@ Newest downloadable build · [Release notes](https://github.com/slyapustin/call-
 
 **Apple Silicon (M1 or newer) · macOS 14.2+ · English speech**
 
+[Windows 11 x64 preview (.exe)](https://github.com/slyapustin/call-note/releases/download/v0.2.8-windows-preview/Call-Note-0.2.8-Windows-x64.exe) · Unsigned preview, manual updates. [Requirements and testing status](https://github.com/slyapustin/call-note/releases/tag/v0.2.8-windows-preview).
+
 > [!NOTE]
 > **Signed and notarized.** Call Note v0.2.7 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
 
@@ -48,11 +50,22 @@ Newest downloadable build · [Release notes](https://github.com/slyapustin/call-
 
 </details>
 
+## How fast is it?
+
+In our tests, Call Note transcribed a **108-second English sample** in:
+
+| Device | Transcription time | Faster than playback |
+| --- | ---: | ---: |
+| Mac with M1 Pro | **1.05 seconds** | **103×** |
+| Windows x64 CI machine, CPU only | **8.2 seconds** | **13×** |
+
+These measurements use 0.2.8 builds with the model already loaded, excluding startup and speaker detection. In a separate Mac live-stream test, the first draft arrived in about **0.36 seconds**, before accounting for microphone capture and screen rendering. [Test conditions, live timings, and memory measurements](docs/benchmarks.md).
+
 ## Before you try it
 
 Transcription runs locally. Call Note saves text, not call recordings. Connecting an assistant lets it access your call library; transcript text it reads is subject to that assistant’s data policies.
 
-Recording starts manually. Speaker labels are estimates, especially with short replies, similar voices, or overlapping speech. Earlier saved calls cannot be relabeled because their audio was not retained; run the sample again to try speaker detection. Use headphones to reduce duplicate audio. Google Calendar sign-in is available to approved test accounts. Windows is not available yet.
+Recording starts manually. Speaker labels are estimates, especially with short replies, similar voices, or overlapping speech. Earlier saved calls cannot be relabeled because their audio was not retained; run the sample again to try speaker detection. Use headphones to reduce duplicate audio. Google Calendar sign-in is available to approved test accounts. The Windows preview has additional setup and validation limits listed in its release notes.
 
 Install v0.2.7 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
 
