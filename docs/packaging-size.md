@@ -1,6 +1,6 @@
 # Mac bundle size audit
 
-Measured on 2026-10-14 against the published 0.2.8 Mac app. These changes are in source for the next release; the existing 0.2.8 downloads are unchanged.
+Measured on 2026-10-14 against the published 0.2.8 Mac app. These changes ship in 0.2.9; the original 0.2.8 assets remain unchanged. The first table records the local candidate used to evaluate the cleanup.
 
 | Artifact | Released 0.2.8 | Cleaned candidate | Reduction |
 | --- | ---: | ---: | ---: |
@@ -48,3 +48,9 @@ All 65 Python tests passed. The signed candidate repeated the speech, streaming/
 [Tauri](https://tauri.app/concept/process-model/) uses the operating system's webview rather than bundling Chromium. It could reduce the desktop shell's size, but Call Note would need replacements for its Electron audio capture, IPC, permissions, tray, notifications, and update integration. It would still need the speech runtime and models. Dependency cleanup is independent of that larger migration.
 
 Downloading a separately versioned speech runtime/model on first use could reduce future installer and update downloads, but shifts the download to setup and requires integrity checks, compatibility management, rollback, and offline-install handling. It does not remove the model's installed size.
+
+## Final 0.2.9 release
+
+The signed, Apple-notarized and stapled release has a **578,289,480-byte DMG** and a **518,749,445-byte update ZIP**. App file contents total **1,091,839,475 bytes**, including **550,350,522 bytes** for Python. The differences from the candidate above reflect final packaging and signing/notarization metadata.
+
+Both app and DMG passed Gatekeeper assessment and stapler validation; the DMG passed image verification. The signed release repeated the real-model smoke checks. A complete installed 0.2.8-to-0.2.9 automatic upgrade has not been verified live.
