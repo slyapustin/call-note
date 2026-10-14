@@ -10,22 +10,22 @@ Call Note transcribes both sides of your calls on your Mac. Find past conversati
 
 *A saved sample conversation. Transcription and your call library stay on your Mac.*
 
-### [Download v0.2.10 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.10/Call-Note-0.2.10-macOS-arm64.dmg)
+### [Download v0.2.11 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.11/Call-Note-0.2.11-macOS-arm64.dmg)
 
-579 MB download · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.10)
+577 MB download · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.11)
 
 **Apple Silicon (M1 or newer) · macOS 14.2+ · English speech**
 
 [Windows 11 x64 preview (.exe)](https://github.com/slyapustin/call-note/releases/download/v0.2.8-windows-preview/Call-Note-0.2.8-Windows-x64.exe) · Unsigned preview, manual updates. [Requirements and testing status](https://github.com/slyapustin/call-note/releases/tag/v0.2.8-windows-preview).
 
 > [!NOTE]
-> **Signed and notarized.** Call Note v0.2.10 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
+> **Signed and notarized.** Call Note v0.2.11 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
 
 ## Get started
 
 1. Download Call Note using the link above.
 2. Open the DMG, then drag **Call Note** into **Applications**. Quit any older copy before replacing it.
-3. Open the app and allow microphone and screen/system-audio recording when asked.
+3. Open the app and allow microphone and system-audio recording when asked.
 4. Choose **New call → Start call**. When finished, choose **Stop & save**.
 
 ## What you can do
@@ -33,6 +33,7 @@ Call Note transcribes both sides of your calls on your Mac. Find past conversati
 ![Call Note setup with Calendar linking, microphone and system audio, and playable samples](docs/screenshots/call-setup.png)
 
 - **Make it yours.** Open **Settings** from the sidebar or press **⌘,** to manage appearance, Calendar, meeting reminders, and support. Follow your Mac’s appearance, or choose Light or Dark. Revisit the tour and update highlights from **Help**.
+- **Start when a call is detected.** On Mac, choose **Settings → General → Call detection**. Get a prompt (default), or enable automatic transcription. Use **Stop & save** when finished. Detection is an early feature: microphone tests may trigger it, and muted calls may be missed.
 - **Read as you talk.** Live transcription of your microphone and the other side of a call.
 - **Follow each speaker.** Automatic Speaker 1, Speaker 2, and Speaker 3 labels for voices in system audio. Your microphone stays labeled You.
 - **Find what mattered.** Search saved calls, add notes, or export the transcript. Delete unwanted calls from your library with confirmation.
@@ -66,9 +67,9 @@ These measurements use 0.2.8 builds with the model already loaded, excluding sta
 
 Transcription runs locally. Call Note saves text, not call recordings. Connecting an assistant lets it access your call library; transcript text it reads is subject to that assistant’s data policies.
 
-Recording starts manually. Speaker labels are estimates, especially with short replies, similar voices, or overlapping speech. Earlier saved calls cannot be relabeled because their audio was not retained; run the sample again to try speaker detection. Use headphones to reduce duplicate audio. Google Calendar sign-in is available to approved test accounts. The Windows preview has additional setup and validation limits listed in its release notes.
+Recording starts manually unless you enable automatic call detection. Calendar events alone do not start recording. Live meeting-app detection and the revised Mac capture path still need validation on affected Macs. If capture fails, export diagnostics from Settings → Support. Speaker labels are estimates, especially with short replies, similar voices, or overlapping speech. Earlier saved calls cannot be relabeled because their audio was not retained; run the sample again to try speaker detection. Use headphones to reduce duplicate audio. Google Calendar sign-in is available to approved test accounts. The Windows preview has additional setup and validation limits listed in its release notes.
 
-Install v0.2.10 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
+Install v0.2.11 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
 
 ## Share a troubleshooting report
 
