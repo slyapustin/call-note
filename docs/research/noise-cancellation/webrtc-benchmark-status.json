@@ -3,11 +3,6 @@
   "electron": "44.7.0",
   "fixture": "fixtures/noisy-5db.wav",
   "durationSeconds": 34,
-  "attempts": [
-    "off",
-    "on"
-  ],
-  "exitCode": 134,
   "sandboxEvidence": "/usr/bin/log show reported Cannot run while sandboxed",
   "realMicrophoneUsed": false,
   "systemPermissionsChanged": false,
@@ -26,5 +21,13 @@
     "frames": 1632000,
     "format": "PCM16 WAV"
   },
-  "flagValidation": "Chromium fake_audio_input_stream.cc explicitly supports and strips %noloop"
+  "flagValidation": "Chromium fake_audio_input_stream.cc explicitly supports and strips %noloop",
+  "subagentExitCode": 134,
+  "subagentAttempts": [
+    "off",
+    "on"
+  ],
+  "rootAttempt": "off",
+  "rootExitCode": 0,
+  "rootOutputValid": false
 }

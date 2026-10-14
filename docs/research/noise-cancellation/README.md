@@ -32,7 +32,7 @@ Unanswered licensing questions do **not** establish that redistribution is prohi
 
 ## Virtual microphone
 
-Investigate a pinned [libASPL](https://github.com/gavv/libASPL) AudioServerPlugIn for a branded, fixed-48-kHz input. MIT and Apple sample notices must be retained. Real published projects use it, but maintenance is concentrated and an outstanding sample-rate timestamp issue needs review. The pinned v3.1.2 library and both official driver examples compiled locally in Release and Debug; all 47 official tests passed with AddressSanitizer. No driver was installed or loaded. The timestamp observation alone did not establish audible drift or broken audio. See [native audit](native-audit.md) for exact commits, releases, build commands and evidence.
+Investigate a pinned [libASPL](https://github.com/gavv/libASPL) AudioServerPlugIn for a branded, fixed-48-kHz input. MIT and Apple sample notices must be retained. Real published projects use it, but maintenance is concentrated and an outstanding sample-rate timestamp issue needs review. The pinned v3.1.2 library compiled locally in Release and Debug, both official driver examples compiled for ARM64, and all 47 official tests passed with AddressSanitizer. No driver was installed or loaded. The timestamp observation alone did not establish audible drift or broken audio. See [native audit](native-audit.md) for exact commits, releases, build commands and evidence.
 
 Keep DSP outside HAL callbacks, with bounded buffering, observable underruns and a clear stopped/error state. Never silently route processed microphone audio to speakers or reopen the virtual input as its own physical source. A helper failure should produce silence plus an error, not silently switch to an unprocessed physical microphone.
 
