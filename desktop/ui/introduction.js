@@ -27,8 +27,8 @@ export function setupIntroduction({bridge, version, canOpen, onError}) {
   function render() {
     const isTour = kind === 'tour';
     get('eyebrow').textContent = isTour ? `A quick tour · ${step + 1} of ${tour.length}` : `What’s new in Call Note ${version}`;
-    get('title').textContent = isTour ? tour[step].title : 'Less memory. More control over your library.';
-    get('description').textContent = isTour ? tour[step].description : 'Call Note now frees speech-model memory between calls and lets you delete saved conversations.';
+    get('title').textContent = isTour ? tour[step].title : 'A smaller Call Note.';
+    get('description').textContent = isTour ? tour[step].description : 'This update trims the Mac download and installed app while keeping local transcription and speaker detection.';
     get('detail').textContent = isTour ? tour[step].detail : 'This screen appears once after each app update. Reopen it anytime from Help → What’s New.';
     for (const preview of dialog.querySelectorAll('[data-preview]')) preview.hidden = preview.dataset.preview !== (isTour ? tour[step].preview : 'news');
     get('back').hidden = !isTour || step === 0;

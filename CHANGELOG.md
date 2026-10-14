@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.9 — 2026-10-14
 
 - Reduced the Mac bundle by removing unused PyTorch dependencies and development tools, preserving Python executable aliases, and using LZFSE installer compression. Windows keeps PyTorch for CPU transcription.
 - Added real-model checks before and after Mac packaging, including streaming and hotwords, and reject nonportable app symlinks before signing.
