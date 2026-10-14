@@ -1,4 +1,4 @@
-const {app, BrowserWindow, session, desktopCapturer, ipcMain, dialog, systemPreferences, safeStorage, shell, Menu} = require('electron');
+const {app, BrowserWindow, session, desktopCapturer, ipcMain, dialog, systemPreferences, safeStorage, shell, Menu, nativeTheme} = require('electron');
 const {spawn} = require('node:child_process');
 const {randomBytes} = require('node:crypto');
 const fs = require('node:fs');
@@ -6,7 +6,7 @@ const path = require('node:path');
 const net = require('node:net');
 app.setName('Call Note');
 app.setPath('userData', path.join(app.getPath('appData'), 'CallDesk'));
-let calendar, updates, callTray, reminders;
+let calendar, updates, callTray, reminders, introduction;
 let window, service, quitting = false, recording = false;
 const token = randomBytes(32).toString('hex');
 let origin;
@@ -20,18 +20,32 @@ app.on('second-instance', showWindow);
 app.on('activate', showWindow);
 function trusted(event) { return event.sender === window?.webContents && event.senderFrame?.url.startsWith(origin + '/'); }
 app.whenReady().then(async () => {
+  const data = app.getPath('userData');
+  const {ThemePreference} = require('./theme.cjs');
+  const theme = new ThemePreference({directory:data, nativeTheme});
+  const windowBackground=()=>nativeTheme.shouldUseDarkColors?'#151c18':'#f6f5f1';
+  nativeTheme.on('updated',()=>{if(window&&!window.isDestroyed())window.setBackgroundColor(windowBackground());});
+  const {Introduction} = require('./introduction.cjs');
+  introduction = new Introduction({directory:data, version:app.getVersion()});
+  ipcMain.handle('introduction:status', event=>{if(!trusted(event))throw Error('Untrusted window');return introduction.status();});
+  ipcMain.handle('introduction:dismiss', (event, kind)=>{if(!trusted(event))throw Error('Untrusted window');return introduction.dismiss(kind);});
+  const openIntroduction=kind=>{showWindow();window?.webContents.send('introduction:open',kind);};
   const updatesURL='https://github.com/slyapustin/call-note/releases';
   const openReleases=()=>shell.openExternal(updatesURL);
   ipcMain.handle('updates:downloads', event=>{if(!trusted(event))throw Error('Untrusted window');return openReleases();});
   const openUpdates=()=>{window?.show();window?.webContents.send('updates:open');};
+  const appearanceItems=[['system','System'],['light','Light'],['dark','Dark']].map(([source,label])=>({
+    label,type:'radio',checked:theme.source===source,click:()=>{
+      if(!theme.set(source).persisted)dialog.showErrorBox('Appearance setting','The appearance changed for this session, but could not be saved. Try again after checking that your user Library is writable.');
+    }
+  }));
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     {label:'Call Note',submenu:[{role:'about'},{label:'Check for Updates…',click:openUpdates},{type:'separator'},{role:'services'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{role:'quit'}]},
-    {role:'editMenu'},{role:'viewMenu'},{role:'windowMenu'},{role:'help',submenu:[{label:'Downloads & Release Notes',click:openReleases}]}
+    {role:'editMenu'},{label:'View',submenu:[{role:'reload'},{role:'forceReload'},{role:'toggleDevTools'},{type:'separator'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{type:'separator'},{role:'togglefullscreen'},{type:'separator'},{label:'Appearance',submenu:appearanceItems}]},{role:'windowMenu'},{role:'help',submenu:[{label:'Quick Tour',click:()=>openIntroduction('tour')},{label:"What's New",click:()=>openIntroduction('news')},{type:'separator'},{label:'Downloads & Release Notes',click:openReleases}]}
   ]));
 
   const port = await new Promise(resolve => { const probe = net.createServer(); probe.listen(0, '127.0.0.1', () => { const port = probe.address().port; probe.close(() => resolve(port)); }); });
   origin = `http://127.0.0.1:${port}`;
-  const data = app.getPath('userData');
   const {GoogleCalendar} = require('./calendar.cjs');
   calendar = new GoogleCalendar({directory:data,safeStorage,shell,clientFile:path.join(app.isPackaged?process.resourcesPath:__dirname,'google-oauth.json')});
   for (const action of ['status','connect','events','disconnect']) ipcMain.handle('calendar:'+action, async event=>{
@@ -86,7 +100,7 @@ app.whenReady().then(async () => {
   ipcMain.on('recording', (event, value) => { if (trusted(event)) { if(value&&!recording)callTray?.update({phase:'preparing',seconds:0});
     if(!value)callTray?.update({phase:'idle',seconds:0});
     recording = !!value; window.setTitle(recording ? '● Recording · Call Note' : 'Call Note'); } });
-  window = new BrowserWindow({width:1240,height:850,minWidth:940,minHeight:650,backgroundColor:'#f6f5f1',title:'Call Note',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
+  window = new BrowserWindow({width:1240,height:850,minWidth:940,minHeight:650,backgroundColor:windowBackground(),title:'Call Note',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
   window.webContents.setWindowOpenHandler(() => ({action:'deny'}));
   window.webContents.on('will-navigate', (event, url) => { if (!url.startsWith(origin + '/')) event.preventDefault(); });
   window.on('close', event => {

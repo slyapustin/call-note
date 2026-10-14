@@ -12,6 +12,16 @@ Open the DMG, drag **Call Note** into **Applications**, and launch it there. Req
 
 The 0.2.4 app and DMG are signed with Apple Developer ID and notarized by Apple. Both passed stapling and macOS Gatekeeper checks. Older preview downloads may still show the Apple verification warning; install the current DMG.
 
+## Tour and release highlights
+
+New installations see a three-step tour. Existing installations see What’s New once per version. Both can be skipped and reopened through **Help → Quick Tour** or **Help → What’s New**. Preferences are stored locally in `introduction.json`, alongside the call library, so they survive changing service ports and app restarts. Introductions wait while a call, sample, or another dialog is active. Starting a call from the menu bar suspends an open introduction until the call is finished.
+
+## Appearance
+
+Choose **View → Appearance → System**, **Light**, or **Dark**. System is the default and follows changes to macOS appearance automatically. The choice applies to app content and native window styling, persists in `theme.json` alongside the call library, and is restored on launch. Renderer styles use `prefers-color-scheme`, driven by Electron’s `nativeTheme.themeSource`.
+
+Malformed or unreadable appearance preferences fall back to System. If a new choice cannot be saved, it still applies for the current session and the app reports the save failure. An initial introduction-preference write failure also leaves the app usable; dismissing an introduction reports a save failure if it cannot be persisted.
+
 ## Menu bar
 
 Call Note stays in the macOS menu bar when you close its window. The menu shows engine readiness, active audio sources, and recording time, with actions to start a call, stop and save, or reopen the window. Choose **Quit Call Note** to fully exit; quitting during a call asks for confirmation.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.5 — 2026-10-14
+
+- Added Light, Dark, and System appearance options in View → Appearance. System follows macOS by default.
+
+- Added a skippable three-step tour for first launch, covering local transcription, Calendar reminders, and the call library.
+- Added a brief What’s New screen after updates, shown once per version.
+- Added Help → Quick Tour and Help → What’s New to reopen either screen.
+- Kept introductions out of active recordings and sample processing.
+
 ## 0.2.4 — 2026-10-14
 
 - Shipped a Developer ID-signed, Apple-notarized app and DMG, with update ZIP and manifest for automatic updates.

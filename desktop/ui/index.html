@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Call Note</title><link rel="stylesheet" href="/ui/style.css"></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Call Note</title><link rel="stylesheet" href="/ui/style.css"><link rel="stylesheet" href="/ui/introduction.css"></head>
 <body><aside><div class="brand"><img class="brandmark" src="/ui/icon.png" alt=""> Call Note</div><button id="new" class="primary">＋ New call</button><label class="search"><span>⌕</span><input id="search" placeholder="Search your calls" aria-label="Search calls"></label><div class="eyebrow">CALL LIBRARY</div><nav id="library" aria-label="Saved calls"></nav><button id="more" hidden>Load more</button><div class="aside-bottom"><span class="dot"></span> Stored on this Mac<br><small>Phonon-2 · English · on-device</small><br><small id="app-version"></small><button id="mcp-help">Connect your assistant ↗</button></div></aside>
 <main><header><div><div class="eyebrow">YOUR CONVERSATIONS, REMEMBERED</div><h1 id="heading">Ready when you are.</h1></div><span id="engine" class="badge">Loading model…</span></header>
 <p id="meeting-details" class="hint" hidden></p><div id="notice" role="status" hidden></div>
@@ -9,4 +9,32 @@
 <footer>Local transcription. A searchable memory. <span id="call-status"></span></footer></main>
 <dialog id="help"><h2>Connect Codex or Claude</h2><p>Call Note provides a local MCP server with search, transcript and analysis tools.</p><p>Click Connect below to add this installed app to Codex and Claude Desktop. Existing settings are preserved and backed up. Restart those clients afterward.</p><p>Ask: “Find my latest Call Note call, summarize decisions and action items, and save the analysis.”</p><p class="hint">Transcription stays on your Mac. Connecting grants your assistant access to the entire call library. It receives transcript text when it reads a call.</p><button id="connect-assistants" class="primary">Connect Codex & Claude</button><p id="connection-result" class="hint" role="status"></p><button id="close-help">Got it</button></dialog>
 <dialog id="update-dialog"><h2>Call Note updates</h2><p id="update-status" role="status"></p><p class="hint">Checks run automatically every four hours. Stable updates download in the background and install when you quit. Test releases are available through View downloads.</p><div class="actions"><button id="update-check">Check now</button><button id="update-downloads">View downloads</button><button id="update-install" class="primary" hidden>Restart &amp; install</button><button id="update-close">Close</button></div></dialog>
+<dialog id="introduction" class="introduction" aria-labelledby="intro-title" aria-describedby="intro-description">
+  <div class="intro-top"><span class="intro-brand"><img src="/ui/icon.png" alt="">Call Note</span><button id="intro-skip">Skip tour</button></div>
+  <div class="intro-body">
+    <p id="intro-eyebrow" class="intro-eyebrow"></p>
+    <div aria-live="polite" aria-atomic="true"><h2 id="intro-title"></h2><p id="intro-description" class="intro-description"></p></div>
+    <div class="intro-preview" data-preview="voices">
+      <p class="intro-example-label">Example transcript</p>
+      <div class="intro-voice"><b>You</b><p>What do we need before the launch?</p></div>
+      <div class="intro-voice"><b>Speaker 1</b><p>I’ll finish the installation guide.</p></div>
+      <div class="intro-voice"><b>Speaker 2</b><p>Let’s review it together on Thursday.</p></div>
+    </div>
+    <div class="intro-preview" data-preview="calendar" hidden>
+      <p class="intro-example-label">Example menu bar reminder</p>
+      <div class="intro-meeting"><div><strong>Product catch-up</strong><small>Starts in 1 minute</small></div><span class="intro-join">Join call</span></div>
+    </div>
+    <div class="intro-preview" data-preview="notes" hidden>
+      <p class="intro-example-label">Example call notes</p>
+      <ul><li><span class="intro-check" aria-hidden="true">✓</span>Launch confirmed for Thursday</li><li><span class="intro-check" aria-hidden="true">✓</span>Alex: finish the installation guide</li><li><span class="intro-check" aria-hidden="true">✓</span>Follow up at tomorrow’s catch-up</li></ul>
+    </div>
+    <div class="intro-preview intro-news" data-preview="news" hidden>
+      <article><h3>A quick tour</h3><p>Three short steps introduce calls, Calendar reminders, and your searchable library. Find it in Help → Quick Tour.</p></article>
+      <article><h3>Light, dark, or Mac</h3><p>Call Note now follows your Mac’s appearance. Choose View → Appearance to keep it light or dark instead.</p></article>
+      <article><h3>Also ready to try</h3><p>Speaker labels and a playable three-person discussion. Choose New call → Try sample to hear it and read along.</p></article>
+    </div>
+    <p id="intro-detail" class="intro-detail"></p>
+  </div>
+  <div class="intro-footer"><div id="intro-progress" class="intro-progress" aria-hidden="true"><span></span><span></span><span></span></div><div class="intro-buttons"><button id="intro-back" hidden>Back</button><button id="intro-tour" hidden>Take the tour</button><button id="intro-next" class="primary">Next</button></div></div>
+</dialog>
 <script type="module" src="/ui/app.js"></script></body></html>

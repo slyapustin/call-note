@@ -4,7 +4,7 @@ Call Note is currently Apple Silicon only, macOS 14.2+. The app uses electron-up
 
 ## Prepare and verify
 
-1. Update `desktop/package.json` and its lockfile version.
+1. Update `desktop/package.json` and its lockfile version. Refresh the release highlights in `desktop/ui/index.html` and `desktop/ui/introduction.js`, and add the changelog entry. Test first-launch tour, existing-user highlights, dismissal across restart, and Help-menu reopening.
 2. Install the pinned Python environment with `./setup.sh`, generate samples with `./make_sample.sh`, download speaker models with `.venv/bin/python scripts/download_speaker_models.py`, and load Phonon-2 once to populate `.cache/fermion`.
 3. Run `.venv/bin/python -m pytest -q` and `node --test desktop/*.test.cjs`.
    For Calendar sign-in, provide the release owner's Desktop OAuth client in the ignored `desktop/google-oauth.json` file. See [Google Calendar setup](development.md#google-calendar).

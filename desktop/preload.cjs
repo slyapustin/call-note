@@ -1,5 +1,8 @@
 const {contextBridge, ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('callDesk', {
+  introductionStatus:()=>ipcRenderer.invoke('introduction:status'),
+  introductionDismiss:kind=>ipcRenderer.invoke('introduction:dismiss',kind),
+  onIntroductionOpen:callback=>ipcRenderer.on('introduction:open',(_event,kind)=>callback(kind)),
   calendarStatus:()=>ipcRenderer.invoke('calendar:status'),
   calendarConnect:()=>ipcRenderer.invoke('calendar:connect'),
   calendarEvents:()=>ipcRenderer.invoke('calendar:events'),

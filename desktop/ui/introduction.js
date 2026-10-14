@@ -1,0 +1,96 @@
+const tour = [
+  {
+    title: 'Your calls, written down.',
+    description: 'Start a call to transcribe your microphone and the voices you hear. Everything is processed on your Mac.',
+    detail: 'Recording starts only when you choose Start call. Use headphones for clearer results. Call Note saves the transcript, not the recording.',
+    preview: 'voices',
+  },
+  {
+    title: 'Be ready for the next call.',
+    description: 'Connect Google Calendar to match meeting details automatically. Your next meeting and a Join call action appear in the menu bar.',
+    detail: 'Choose a reminder one minute or 30 seconds before a meeting. Joining opens the meeting link; transcription still starts manually. Google sign-in currently requires an approved test account.',
+    preview: 'calendar',
+  },
+  {
+    title: 'Keep the useful parts.',
+    description: 'Search past calls, add your notes, and export a transcript. Connect Codex or Claude to find decisions and next steps.',
+    detail: 'A connected assistant can read your entire call library. Text it reads is subject to that assistant’s data policies. You can explore a playable sample before your first call.',
+    preview: 'notes',
+  },
+];
+
+export function setupIntroduction({bridge, version, canOpen, onError}) {
+  const dialog = document.getElementById('introduction');
+  const get = id => document.getElementById(`intro-${id}`);
+  let kind = 'tour', step = 0, pending, dismissing = false, returnFocus, manualRequest = false;
+
+  function render() {
+    const isTour = kind === 'tour';
+    get('eyebrow').textContent = isTour ? `A quick tour · ${step + 1} of ${tour.length}` : `What’s new in Call Note ${version}`;
+    get('title').textContent = isTour ? tour[step].title : 'A fresh look. A quicker start.';
+    get('description').textContent = isTour ? tour[step].description : 'Settle into light or dark mode, explore a quick tour, and catch up on what’s new after an update.';
+    get('detail').textContent = isTour ? tour[step].detail : 'This screen appears once after each app update. Reopen it anytime from Help → What’s New.';
+    for (const preview of dialog.querySelectorAll('[data-preview]')) preview.hidden = preview.dataset.preview !== (isTour ? tour[step].preview : 'news');
+    get('back').hidden = !isTour || step === 0;
+    get('tour').hidden = isTour;
+    get('skip').textContent = isTour ? 'Skip tour' : 'Close';
+    get('next').textContent = isTour ? (step < tour.length - 1 ? 'Next' : 'Start exploring') : 'Got it';
+    get('progress').hidden = !isTour;
+    [...get('progress').children].forEach((dot, index) => dot.dataset.current = String(index === step));
+  }
+
+  function open(nextKind) {
+    if (!['tour', 'news'].includes(nextKind)) return;
+    if (dialog.open && !dismissing && canOpen()) {
+      pending = null;
+      if (kind !== nextKind) {kind = nextKind; step = 0; render(); get('next').focus();}
+      return;
+    }
+    pending = {kind:nextKind, step:0};
+    maybeOpen();
+  }
+
+  function maybeOpen() {
+    if (!pending || dismissing || dialog.open || !canOpen() || document.querySelector('dialog[open]')) return;
+    ({kind, step} = pending); pending = null;
+    returnFocus = document.activeElement;
+    render(); dialog.showModal(); get('next').focus();
+  }
+
+  function suspend() {
+    if (!dialog.open) return;
+    if (!dismissing) pending ??= {kind, step};
+    dialog.close();
+  }
+
+  async function dismiss() {
+    if (dismissing) return;
+    dismissing = true;
+    try { await bridge.introductionDismiss(kind); }
+    catch { onError('Could not save your tour preference. It may appear again next time.'); }
+    finally {
+      dialog.close(); dismissing = false;
+      if (returnFocus?.isConnected && !returnFocus.disabled) returnFocus.focus();
+    }
+  }
+
+  function move(delta) {
+    if (dismissing) return;
+    step += delta; render(); get('next').focus();
+  }
+  get('next').onclick = () => kind === 'tour' && step < tour.length - 1 ? move(1) : dismiss();
+  get('back').onclick = () => move(-1);
+  get('skip').onclick = dismiss;
+  get('tour').onclick = () => {if (dismissing) return; kind = 'tour'; step = 0; render(); get('next').focus();};
+  dialog.addEventListener('cancel', event => {event.preventDefault(); dismiss();});
+  bridge.onIntroductionOpen(nextKind => {
+    if (!['tour', 'news'].includes(nextKind)) return;
+    manualRequest = true;
+    open(nextKind);
+  });
+  // Check again when a recording, sample, or another dialog finishes.
+  const interval = setInterval(maybeOpen, 1000);
+  window.addEventListener('pagehide', () => clearInterval(interval), {once:true});
+  bridge.introductionStatus().then(state => {if (!manualRequest && state.kind) open(state.kind);}).catch(() => {});
+  return {suspend};
+}
