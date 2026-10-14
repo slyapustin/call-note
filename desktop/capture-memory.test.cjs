@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'ui/app.js'),'utf8');
 test('capture release detaches ports and socket handlers and drops audio references',()=>{
   const calls=[];
-  const context=vm.createContext({$:()=>({replaceChildren(){}}),window:{callDesk:{recording:value=>calls.push(value)}},clearInterval(){},timer:1,reportError(){}});
+  const context=vm.createContext({$:()=>({replaceChildren(){}}),health:{stage:'idle',microphone:false,system:false,microphoneHeard:false,systemHeard:false,framesSent:0,backpressureStops:0,trackEnds:0,segmentsReceived:0},reportHealth(){},window:{callDesk:{recording:value=>calls.push(value),reportHealth(){}}},clearInterval(){},timer:1,reportError(){}});
   vm.runInContext(source.slice(source.indexOf('class Capture {'),source.indexOf('\nasync function finish('))+'\nthis.Capture=Capture;',context);
   const capture=new context.Capture();
   const port={onmessage:()=>{},close:()=>calls.push('port')};

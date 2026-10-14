@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 import json
 import os
 import secrets
+import tempfile
 import time
 from typing import Literal
 
@@ -16,6 +17,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app import ROOT, engine, engine_call, local_requests, status
 from call_store import CallStore, transcript_markdown
+from diarization import SpeakerDiagnostics
 from streaming import LiveTranscriber
 
 TOKEN = os.environ.get('CALL_DESK_TOKEN', secrets.token_urlsafe(32))
@@ -24,6 +26,61 @@ diarizer = None
 IDLE_SECONDS = max(1, int(os.environ.get('CALL_NOTE_IDLE_SECONDS', '120')))
 last_engine_use = time.monotonic()
 request_idle_exit = None
+latest_diagnostics = SpeakerDiagnostics()
+latest_has_call = False
+DIAGNOSTICS_FILE = 'diagnostics-health.json'
+
+
+def load_diagnostics(directory):
+    """Load only the fixed aggregate schema; ignore any unknown properties."""
+    path = directory / DIAGNOSTICS_FILE
+    if not path.exists():
+        return SpeakerDiagnostics(), False
+    try:
+        with path.open(encoding='utf-8') as source:
+            payload = json.loads(source.read(8193))
+            if source.tell() > 8192:
+                return SpeakerDiagnostics(), False
+        if not isinstance(payload, dict) or type(payload.get('has_call')) is not bool:
+            return SpeakerDiagnostics(), False
+        raw_counts = payload.get('counters')
+        if not isinstance(raw_counts, dict):
+            return SpeakerDiagnostics(), False
+        counts = SpeakerDiagnostics()
+        for key in SpeakerDiagnostics.FIELDS:
+            value = raw_counts.get(key)
+            if type(value) is not int or not 0 <= value <= SpeakerDiagnostics.LIMIT:
+                return SpeakerDiagnostics(), False
+            counts.increment(key, value)
+        return counts, payload['has_call']
+    except (OSError, ValueError, TypeError):
+        return SpeakerDiagnostics(), False
+
+
+def persist_diagnostics(directory, diagnostics, has_call):
+    """Atomically save counters only, with private file permissions."""
+    path = directory / DIAGNOSTICS_FILE
+    temp_path = None
+    try:
+        descriptor, temp_path = tempfile.mkstemp(prefix='.diagnostics-', suffix='.tmp', dir=directory)
+        with os.fdopen(descriptor, 'w', encoding='utf-8') as target:
+            if os.name != 'nt':
+                os.fchmod(target.fileno(), 0o600)
+            json.dump({'has_call': bool(has_call), 'counters': diagnostics.snapshot()}, target,
+                      separators=(',', ':'), sort_keys=True)
+            target.flush()
+            os.fsync(target.fileno())
+        os.replace(temp_path, path)
+        temp_path = None
+        if os.name != 'nt':
+            path.chmod(0o600)
+    except OSError:
+        # Diagnostics must never interrupt or change the outcome of a call.
+        pass
+    finally:
+        if temp_path is not None:
+            with contextlib.suppress(OSError):
+                os.unlink(temp_path)
 
 def release_models():
     global diarizer
@@ -58,19 +115,19 @@ async def idle_memory():
             request_idle_exit()
             return
 
-def speaker_session():
+def speaker_session(diagnostics=None):
     global diarizer
     from diarization import Diarizer, SpeakerSession
     if diarizer is None:
         diarizer = Diarizer(ROOT / "models/diarization")
-    return SpeakerSession(diarizer)
+    return SpeakerSession(diarizer, diagnostics if diagnostics is not None else latest_diagnostics)
 
 def transcribe_sample(path, hotwords):
     import soundfile as sf
     audio, rate = sf.read(path, dtype="float32")
     if rate != 16000 or audio.ndim != 1:
         raise ValueError("The sample must be mono 16 kHz audio.")
-    segments = speaker_session().transcribe(audio, engine.model, hotwords)
+    segments = speaker_session(SpeakerDiagnostics()).transcribe(audio, engine.model, hotwords)
     return {"audio_seconds": len(audio)/rate, "segments": segments}
 
 SAMPLES = {
@@ -80,8 +137,9 @@ SAMPLES = {
 
 @asynccontextmanager
 async def lifespan(application):
-    global store
+    global store, latest_diagnostics, latest_has_call
     store = CallStore()
+    latest_diagnostics, latest_has_call = load_diagnostics(store.directory)
     store.recover()
     idle = asyncio.create_task(idle_memory())
     try:
@@ -112,6 +170,21 @@ def index():
     return FileResponse(ROOT / 'desktop/ui/index.html')
 
 app.get('/api/status')(status)
+
+@app.get('/api/diagnostics')
+def diagnostics():
+    # This endpoint intentionally exposes only fixed numeric counters and
+    # coarse runtime state. It never reads call data or triggers model loading.
+    engine_status = engine.status if engine.status in {'idle', 'loading', 'ready', 'error'} else 'unknown'
+    return {
+        'scope': 'latest_call',
+        'has_call': latest_has_call,
+        'counters': latest_diagnostics.snapshot(),
+        'runtime': {
+            'engine_status': engine_status,
+            'speaker_model_loaded': diarizer is not None,
+        },
+    }
 
 @app.post('/api/engine/prepare')
 async def prepare_engine():
@@ -187,6 +260,7 @@ async def record(socket: WebSocket):
     boundaries = {}
     started = time.monotonic()
     completed = False
+    diagnostics = None
 
     async def publish(source, events):
         for event in events:
@@ -217,6 +291,10 @@ async def record(socket: WebSocket):
         if event is not None and (not isinstance(event, dict) or len(json.dumps(event)) > 30000):
             raise ValueError('Invalid calendar event metadata.')
         call = store.create(str(config.get('title', 'Untitled call')), calendar_event=event)
+        global latest_diagnostics, latest_has_call
+        diagnostics = latest_diagnostics = SpeakerDiagnostics()
+        latest_has_call = True
+        persist_diagnostics(store.directory, diagnostics, True)
         started = time.monotonic()
         speaker_warning = False
         for source in sources:
@@ -225,8 +303,9 @@ async def record(socket: WebSocket):
                 try:
                     speakers = await engine_call(speaker_session)
                 except Exception:
+                    diagnostics.increment('diarization_failures')
                     speaker_warning = True
-            sessions[source] = await engine_call(LiveTranscriber, engine.model, [], speakers)
+            sessions[source] = await engine_call(LiveTranscriber, engine.model, [], speakers, diagnostics)
             boundaries[source] = 0
         await socket.send_json({'type': 'ready', 'call': call})
         if speaker_warning:
@@ -283,6 +362,8 @@ async def record(socket: WebSocket):
                 except Exception:
                     pass
             store.finish(call['id'], time.monotonic()-started, 'interrupted')
+        if call and diagnostics is not None:
+            persist_diagnostics(store.directory, diagnostics, True)
         if owned:
             sessions.clear()
             engine_finished()

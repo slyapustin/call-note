@@ -8,6 +8,9 @@ function registerSupport({ipcMain, clipboard, trusted, diagnostics}) {
     try { await clipboard.writeText(text); }
     catch (error) { diagnostics.record('clipboard', error); throw Error('Could not copy the text. Try again.'); }
   });
+  ipcMain.on('diagnostics:health', (event, value) => {
+    if (trusted(event)) diagnostics.setHealth(value);
+  });
   ipcMain.on('diagnostics:error', (event, error) => {
     if (trusted(event)) diagnostics.record('renderer', error);
   });
@@ -24,10 +27,10 @@ function createDiagnosticsExporter({dialog, shell, getWindow, diagnostics, getSt
         title:'Export Call Note diagnostics',
         defaultPath:path.join(downloads, `Call-Note-diagnostics-${new Date().toISOString().slice(0,10)}.txt`),
         filters:[{name:'Text report',extensions:['txt']}],
-        message:'Includes app versions and error categories. Excludes transcripts, notes, Calendar details and credentials. Nothing is sent automatically.'
+        message:'Includes app versions, failure stages and anonymous capture and speaker counters. Excludes transcripts, notes, Calendar details and credentials. Nothing is sent automatically.'
       });
       if (result.canceled || !result.filePath) return;
-      await filesystem.writeFile(result.filePath, diagnostics.exportReport(getState()), {encoding:'utf8',mode:0o600});
+      await filesystem.writeFile(result.filePath, diagnostics.exportReport(await getState()), {encoding:'utf8',mode:0o600});
       const choice = await dialog.showMessageBox(window, {
         type:'info',message:'Diagnostics saved',
         detail:'Review the text file, then attach it to your support conversation or GitHub issue. Include what you were doing and when the problem happened.',

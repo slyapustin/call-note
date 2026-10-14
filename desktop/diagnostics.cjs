@@ -5,8 +5,29 @@ const MAX_BYTES = 100 * 1024;
 const SERVICE_BYTES = 64 * 1024;
 const SCOPES = new Set(['renderer', 'updater', 'service', 'clipboard']);
 const NAMES = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'NotAllowedError', 'NotFoundError', 'NotReadableError', 'AbortError', 'SecurityError', 'NetworkError', 'TimeoutError', 'PermissionError', 'ConnectionError', 'RuntimeError', 'ValueError', 'ModuleNotFoundError', 'ImportError', 'OSError']);
-const CODES = new Set(['CAPTURE_SOURCE', 'CAPTURE_OPEN', 'CAPTURE_TRACK', 'RENDERER_GONE', 'EACCES', 'EPERM', 'ENOENT', 'ENOSPC', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ERR_NETWORK', 'ERR_INTERNET_DISCONNECTED', 'ERR_UPDATER_NO_PUBLISHED_VERSIONS', 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND', 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND', 'ERR_UPDATER_INVALID_RELEASE_FEED', 'ERR_UPDATER_INVALID_SIGNATURE', 'ERR_UPDATER_SIGNATURE_NOT_FOUND', 'ERR_UPDATER_ZIP_FILE_NOT_FOUND', 'ERR_UPDATER_CHECKSUM_MISMATCH']);
+const CODES = new Set(['CAPTURE_CONNECTION', 'CAPTURE_BACKPRESSURE', 'CAPTURE_ENDED', 'CAPTURE_SOURCE', 'CAPTURE_OPEN', 'CAPTURE_TRACK', 'RENDERER_GONE', 'EACCES', 'EPERM', 'ENOENT', 'ENOSPC', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ERR_NETWORK', 'ERR_INTERNET_DISCONNECTED', 'ERR_UPDATER_NO_PUBLISHED_VERSIONS', 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND', 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND', 'ERR_UPDATER_INVALID_RELEASE_FEED', 'ERR_UPDATER_INVALID_SIGNATURE', 'ERR_UPDATER_SIGNATURE_NOT_FOUND', 'ERR_UPDATER_ZIP_FILE_NOT_FOUND', 'ERR_UPDATER_CHECKSUM_MISMATCH']);
 const CATEGORIES = new Set(['clipboard-denied', 'permission-denied', 'network', 'timeout', 'missing-file', 'disk-full', 'update-signature', 'update-feed', 'service-exit', 'error']);
+const STAGES = new Set(['idle','prepare','microphone','system','calendar','connect','worklet','recording','saving','stopped','error']);
+const REASONS = new Set(['clean-exit','abnormal-exit','killed','crashed','oom','launch-failed','integrity-failure']);
+const COUNTERS = ['processed_phrases','speaker_known_matches','speaker_new_identities','speaker_uncertain','diarization_failures','overlap_intervals','streaming_finals'];
+const integer = value => Number.isSafeInteger(value) && value >= 0 && value <= 2147483647;
+function captureHealth(value = {}) {
+  value = value || {};
+  const result = {};
+  if (STAGES.has(value.stage)) result.stage = value.stage;
+  for (const key of ['microphone','system','microphoneHeard','systemHeard']) if (typeof value[key] === 'boolean') result[key] = value[key];
+  for (const key of ['framesSent','backpressureStops','trackEnds','segmentsReceived']) if (integer(value[key])) result[key] = value[key];
+  return result;
+}
+function backendHealth(value) {
+  if (!value || value.scope !== 'latest_call') return {available:false};
+  const counters = {};
+  for (const key of COUNTERS) if (integer(value.counters?.[key])) counters[key] = value.counters[key];
+  const runtime = {};
+  if (['idle','loading','ready','error','unknown'].includes(value.runtime?.engine_status)) runtime.engine_status = value.runtime.engine_status;
+  if (typeof value.runtime?.speaker_model_loaded === 'boolean') runtime.speaker_model_loaded = value.runtime.speaker_model_loaded;
+  return {available:true,scope:'latest_call',has_call:typeof value.has_call === 'boolean' ? value.has_call : 'unknown',counters,runtime};
+}
 const PHASES = new Set(['idle', 'checking', 'current', 'downloading', 'verifying', 'ready', 'unavailable', 'error']);
 
 function field(value, key) {
@@ -33,6 +54,11 @@ function sanitize(error, scope, timestamp = new Date().toISOString()) {
   const name = field(error, 'name'), code = field(error, 'code');
   if (NAMES.has(name)) event.name = name;
   if (CODES.has(code)) event.code = code;
+  if (STAGES.has(error?.stage)) event.stage = error.stage;
+  if (REASONS.has(error?.reason)) event.reason = error.reason;
+  if (Number.isInteger(error?.exitCode) && Math.abs(error.exitCode) <= 2147483648) event.exitCode = error.exitCode;
+  event.version = numericVersion(error?.version);
+  if (integer(error?.uptimeSeconds)) event.uptimeSeconds = error.uptimeSeconds;
   return event;
 }
 
@@ -68,6 +94,9 @@ class Diagnostics {
       arch:['arm64', 'x64', 'ia32'].includes(arch) ? arch : 'unknown',
       osRelease:numericVersion(osRelease),
     };
+    this.started = Date.now();
+    this.health = {};
+    this.healthTime = null;
     this.events = [];
     for (const line of readTail(this.fs, this.file, MAX_BYTES).text.split('\n')) {
       try {
@@ -83,6 +112,8 @@ class Diagnostics {
 
   record(scope, error) {
     const event = sanitize(error, scope);
+    event.version = this.metadata.version;
+    event.uptimeSeconds = Math.min(2147483647, Math.floor((Date.now()-this.started)/1000));
     this.events.push(event);
     this.events = this.events.slice(-100);
     try {
@@ -97,7 +128,12 @@ class Diagnostics {
     return event;
   }
 
-  exportReport({updatePhase, recording} = {}) {
+  setHealth(value) {
+    this.health = captureHealth(value);
+    this.healthTime = Date.now();
+  }
+
+  exportReport({updatePhase, recording, backend, microphonePermission} = {}) {
     const tail = readTail(this.fs, this.serviceFile, SERVICE_BYTES);
     const patterns = {
       'HTTP server errors':/HTTP\/\d(?:\.\d)?["']?\s+5\d\d\b/g,
@@ -111,13 +147,21 @@ class Diagnostics {
     };
     return [
       'Call Note diagnostics',
+      'Schema: 2',
       `Generated: ${new Date().toISOString()}`,
       ...Object.entries(this.metadata).map(([key, value]) => `${key}: ${value}`),
       `Update phase: ${PHASES.has(updatePhase) ? updatePhase : 'unknown'}`,
       `Recording: ${typeof recording === 'boolean' ? recording : 'unknown'}`,
       '',
       'Privacy: This report omits transcripts, audio, calendar events, credentials, paths, raw log lines, error messages and stack traces.',
-      'Only fixed error categories and names are included. Counts describe the recent log excerpt, not the entire session.',
+      'Only allowlisted operational fields and aggregate counters are included. No voice profiles, speaker names, device identifiers or audio measurements are exported.',
+      'Log counts cover the recent excerpt only. Historical events retain their originating version; older events have version unknown.',
+      `Microphone permission: ${['granted','denied','restricted','not-determined','unknown'].includes(microphonePermission) ? microphonePermission : 'unknown'}`,
+      'System audio permission: unknown (no reliable preflight)',
+      `Capture health (latest attempt this app session): ${JSON.stringify(this.health)}`,
+      `Capture snapshot age seconds: ${this.healthTime === null ? 'unavailable' : Math.floor((Date.now()-this.healthTime)/1000)}`,
+      `Service health: ${JSON.stringify(backendHealth(backend))}`,
+      'Speaker counters cover the latest call; they do not measure speaker accuracy. Capture counters reset at each capture attempt.',
       '',
       `Service log: ${tail.available ? `summarized (last ${SERVICE_BYTES} bytes maximum; ${tail.truncated ? 'truncated' : 'complete file'})` : 'unavailable'}`,
       ...Object.entries(patterns).map(([label, pattern]) => `${label}: ${(tail.text.match(pattern) || []).length}`),

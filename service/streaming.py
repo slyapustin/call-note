@@ -3,10 +3,11 @@ import time
 
 
 class LiveTranscriber:
-    def __init__(self, model, hotwords, speakers=None):
+    def __init__(self, model, hotwords, speakers=None, diagnostics=None):
         from fermion._speech.live import LiveSession
 
         self.speakers = speakers
+        self.diagnostics = diagnostics or getattr(speakers, 'diagnostics', None)
         self.last_audio = None
         self.audio_base = 0.0
         self.model = model
@@ -37,6 +38,8 @@ class LiveTranscriber:
         self.events.append({"type": "partial", "final_text": self.session.transcript, "text": text})
 
     def final(self, text):
+        if self.diagnostics is not None:
+            self.diagnostics.increment('streaming_finals')
         if self.speakers is not None:
             try:
                 turns = self.speakers.transcribe(self.last_audio, self.model, self.hotwords, fallback=text)
@@ -50,6 +53,8 @@ class LiveTranscriber:
                 self.events.extend(events)
                 return
             except Exception:
+                if self.diagnostics is not None:
+                    self.diagnostics.increment('diarization_failures')
                 self.events.append({"type": "warning", "message": "Speaker detection failed for a phrase. Its transcript is saved without a speaker label."})
         self.events.append({"type": "final", "final_text": self.session.transcript, "text": text, "start": float(self.last_bounds[0]), "end": float(self.last_bounds[1])})
 

@@ -106,3 +106,29 @@ test('capture exception names and bounded stages survive export and reload witho
   assert.ok(report.includes('NotReadableError'));
   assert.ok(!report.includes('private device name'));
 });
+
+test('versioned failure stages and renderer exit reasons survive restarts', t => {
+  const {diagnostics, options, directory}=fixture(t);
+  fs.writeFileSync(path.join(directory,'diagnostics.jsonl'),JSON.stringify({timestamp:new Date().toISOString(),scope:'renderer',name:'Error'})+'\n');
+  const current=new Diagnostics(options);
+  current.record('renderer',{name:'Error',code:'RENDERER_GONE',reason:'oom',exitCode:9,stage:'recording',version:'999.9'});
+  const restored=new Diagnostics({...options,version:'0.2.13'});
+  assert.equal(restored.events[0].version,'unknown');
+  assert.equal(restored.events[1].version,'0.2.5');
+  assert.equal(restored.events[1].reason,'oom');
+  assert.equal(restored.events[1].stage,'recording');
+  assert.equal(restored.events[1].exitCode,9);
+  assert.equal(restored.events[1].uptimeSeconds,0);
+});
+
+test('capture and backend snapshots exclude extra fields and malformed values', t => {
+  const {diagnostics}=fixture(t);
+  const secret='secret-person@example.com';
+  diagnostics.setHealth({stage:'recording',microphone:true,systemHeard:true,framesSent:120,trackEnds:Infinity,segmentsReceived:secret,title:secret});
+  const report=diagnostics.exportReport({microphonePermission:secret,backend:{scope:'latest_call',counters:{speaker_new_identities:2,speaker_uncertain:-1,processed_phrases:secret,transcript:secret},runtime:{engine_status:'ready',speaker_model_loaded:true,modelPath:secret},names:[secret]}});
+  assert.match(report,/"framesSent":120/);
+  assert.match(report,/"speaker_new_identities":2/);
+  assert.match(report,/"engine_status":"ready"/);
+  assert.doesNotMatch(report,/secret-person|Infinity|"trackEnds"|"speaker_uncertain"/);
+  assert.match(diagnostics.exportReport(),/"available":false/);
+});

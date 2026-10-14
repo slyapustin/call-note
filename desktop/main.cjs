@@ -27,7 +27,13 @@ app.whenReady().then(async () => {
   const diagnostics = new Diagnostics({directory:data,version:app.getVersion(),versions:process.versions,platform:process.platform,arch:process.arch,osRelease:require('node:os').release()});
   const {registerSupport,createDiagnosticsExporter} = require('./support.cjs');
   registerSupport({ipcMain,clipboard,trusted,diagnostics});
-  const exportDiagnostics = createDiagnosticsExporter({dialog,shell,getWindow:()=>window,diagnostics,downloads:app.getPath('downloads'),getState:()=>({recording,updatePhase:updates?.status().phase})});
+  const exportDiagnostics = createDiagnosticsExporter({dialog,shell,getWindow:()=>window,diagnostics,downloads:app.getPath('downloads'),getState:async()=>{
+    let backend;
+    try {const response=await fetch(origin+'/api/diagnostics',{headers:{'x-call-token':token},signal:AbortSignal.timeout(2000),redirect:'error'});if(response.ok)backend=await response.json();} catch {}
+    let microphonePermission='unknown';
+    try {microphonePermission=systemPreferences.getMediaAccessStatus('microphone');} catch {}
+    return {recording,updatePhase:updates?.status().phase,backend,microphonePermission};
+  }});
   const {ThemePreference} = require('./theme.cjs');
   const theme = new ThemePreference({directory:data, nativeTheme});
   const {registerSettings}=require('./settings.cjs');
@@ -146,7 +152,7 @@ app.whenReady().then(async () => {
   powerMonitor.on('suspend',()=>{reminders.reset();detectionLifecycle.stopMonitoring();});
   powerMonitor.on('resume',async()=>{detectionLifecycle.observeEngine(callTray.state.engine);await reminders.pending?.catch(()=>{});reminders.refresh().catch(()=>{});});
   ipcMain.on('tray:state',(event,value)=>{if(trusted(event)){callTray.update(value);detectionLifecycle.observeEngine(callTray.state.engine);}});
-  window.webContents.on('render-process-gone',()=>{diagnostics.record('renderer',{name:'Error',code:'RENDERER_GONE'});recording=false;detectionLifecycle.stopMonitoring();callTray.update({phase:'idle',engine:'error'});});
+  window.webContents.on('render-process-gone',(_event,details)=>{diagnostics.record('renderer',{name:'Error',code:'RENDERER_GONE',reason:details.reason,exitCode:details.exitCode});recording=false;detectionLifecycle.stopMonitoring();callTray.update({phase:'idle',engine:'error'});});
   let ready = false;
   for (let attempt=0;attempt<300;attempt++) {
     try { if ((await fetch(origin)).ok) {ready=true;break;} } catch {}

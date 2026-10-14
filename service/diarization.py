@@ -5,6 +5,26 @@ import numpy as np
 RATE = 16000
 
 
+class SpeakerDiagnostics:
+    """Fixed-size in-memory counters for the latest recording only."""
+    FIELDS = (
+        'processed_phrases', 'speaker_known_matches', 'speaker_new_identities',
+        'speaker_uncertain', 'diarization_failures', 'overlap_intervals',
+        'streaming_finals',
+    )
+    LIMIT = 2**31 - 1
+
+    def __init__(self):
+        self._counts = dict.fromkeys(self.FIELDS, 0)
+
+    def increment(self, name, amount=1):
+        if name in self._counts and amount > 0:
+            self._counts[name] = min(self.LIMIT, self._counts[name] + int(amount))
+
+    def snapshot(self):
+        return dict(self._counts)
+
+
 class Diarizer:
     def __init__(self, directory):
         import sherpa_onnx as s
@@ -35,16 +55,23 @@ class Diarizer:
 
 
 class SpeakerSession:
-    def __init__(self, diarizer):
+    def __init__(self, diarizer, diagnostics=None):
         self.diarizer = diarizer
+        self.diagnostics = diagnostics
         self.voices = []
+
+    def _count(self, name):
+        if self.diagnostics is not None:
+            self.diagnostics.increment(name)
 
     def identify(self, vector, duration=3.):
         if vector is None or duration < 1.:
+            self._count('speaker_uncertain')
             return None
         vector = np.asarray(vector, dtype=np.float32)
         norm = np.linalg.norm(vector)
         if vector.ndim != 1 or not np.isfinite(vector).all() or norm <= 0:
+            self._count('speaker_uncertain')
             return None
         vector = vector / norm
         similarities = [float(np.dot(vector, voice)) for voice in self.voices]
@@ -57,14 +84,18 @@ class SpeakerSession:
                 if duration >= 2. and score >= 0.65:
                     updated = self.voices[best] * 0.85 + vector * 0.15
                     self.voices[best] = updated / np.linalg.norm(updated)
+                self._count('speaker_known_matches')
                 return best + 1
             # An uncertain match is not evidence of another person.
             if score > 0.35:
+                self._count('speaker_uncertain')
                 return None
         # Brief replies and fillers cannot establish a new identity.
         if duration < 2.5 or len(self.voices) >= 32:
+            self._count('speaker_uncertain')
             return None
         self.voices.append(vector.copy())
+        self._count('speaker_new_identities')
         return len(self.voices)
 
     def turns(self, audio):
@@ -86,6 +117,8 @@ class SpeakerSession:
             active = {speaker for left, right, speaker in spans if left < end and right > start}
             if not active:
                 continue
+            if len(active) > 1:
+                self._count('overlap_intervals')
             speaker = next(iter(active)) if len(active) == 1 else None
             if result and result[-1]['speaker'] == speaker and start - result[-1]['end'] < 0.8:
                 result[-1]['end'] = end
@@ -94,6 +127,7 @@ class SpeakerSession:
         return result
 
     def transcribe(self, audio, model, hotwords, fallback=None):
+        self._count('processed_phrases')
         turns = self.turns(audio)
         if not turns:
             text = fallback if fallback is not None else model.transcribe_array(audio, hotwords=hotwords)[0]

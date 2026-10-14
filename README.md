@@ -75,6 +75,6 @@ Install v0.2.12 manually if your older version cannot update. Call Note checks f
 
 Choose **Settings → Support → Export diagnostics…** or **Help → Export Diagnostics…** to save a text file. Review it, then attach it when [reporting a problem](https://github.com/slyapustin/call-note/issues).
 
-The report includes app/runtime versions and error categories and counts. It excludes transcripts, notes, Calendar details, credentials, and raw log text. Nothing is uploaded automatically.
+Reports from 0.2.13 include app/runtime versions, failure stages, renderer exit reasons, microphone permission state, and anonymous capture and speaker counters. Export soon after a problem for the freshest capture snapshot; the last call’s numeric speaker summary survives idle service restarts. Counters help diagnose failures but cannot prove speaker accuracy. Reports exclude audio, transcripts, notes, names, voice profiles, device identifiers, Calendar details, credentials, and raw log text. Nothing is uploaded automatically.
 
 [Changelog](CHANGELOG.md) · [Report a problem](https://github.com/slyapustin/call-note/issues) · [Developer setup](docs/development.md) · [Release instructions](docs/releases.md)

@@ -7,6 +7,10 @@ const session = await window.callDesk.session();
 let calendarEvents=[], selectedEvent=null, settings, deletion;
 let sampleRunning = false, introduction;
 let current, capture, ready = false, searchTimer, timer, libraryOffset = 0;
+const captureStages = new Set(['idle','prepare','microphone','system','calendar','connect','worklet','recording','saving','stopped','error']);
+let health={stage:'idle',microphone:false,system:false,microphoneHeard:false,systemHeard:false,framesSent:0,backpressureStops:0,trackEnds:0,segmentsReceived:0};
+const reportedErrors=new WeakSet();
+function reportHealth() { try {window.callDesk.reportHealth({...health});} catch {} }
 const sampleKinds = {sample:'briefing', 'sample-multiparty':'meeting'};
 const sampleAudio = new Map();
 const labels = {microphone:'You',system:'Others',sample:'Sample'};
@@ -17,7 +21,10 @@ async function api(url, options={}) {
   if (!response.ok) throw Error((await response.json()).detail || 'Request failed.');
   return response.json();
 }
-function reportError(error) { try {window.callDesk.reportError({name:error?.name,code:error?.code,message:String(error?.message||'').slice(0,2000)});} catch {} }
+function reportError(error, stage=capture?.errorStage||capture?.stage||health.stage) {
+  if(error&&typeof error==='object'){if(reportedErrors.has(error))return;reportedErrors.add(error);}
+  try {window.callDesk.reportError({name:error?.name,code:error?.code,message:String(error?.message||'').slice(0,2000),stage:captureStages.has(stage)?stage:'error'});} catch {}
+}
 window.addEventListener('error',event=>reportError(event.error));
 window.addEventListener('unhandledrejection',event=>reportError(event.reason));
 function handle(fn) { return async (...args) => { try {await fn(...args);} catch(error) {reportError(error);notice(error.message);} }; }
@@ -82,21 +89,28 @@ async function status() {
   try {const state=await api('/status');window.callDesk.menuState({engine:state.status,busy:state.busy});ready=['idle','ready'].includes(state.status)&&!state.busy;$('engine').textContent=state.status==='error'?'Engine unavailable':state.status==='ready'?'● Phonon-2 ready':state.status==='idle'?'Speech model resting · loads when you start':'Loading Phonon-2…';$('start').disabled=!ready||!!capture;$('demo').disabled=!ready||!!capture;if(state.error)notice(state.error);} catch {$('engine').textContent='Service unavailable';window.callDesk.menuState({engine:'error'});}
 }
 class Capture {
-  constructor() {this.streams=[];this.nodes=[];this.contexts=[];this.stopping=false;this.active=false;this.partial={};this.meters={};}
+  constructor() {health={stage:'idle',microphone:false,system:false,microphoneHeard:false,systemHeard:false,framesSent:0,backpressureStops:0,trackEnds:0,segmentsReceived:0};this.stage='idle';this.streams=[];this.nodes=[];this.contexts=[];this.stopping=false;this.active=false;this.partial={};this.meters={};reportHealth();}
+  setStage(stage) {this.stage=stage;health.stage=stage;reportHealth();}
   async start() {
     if (!$('mic').checked&&!$('system').checked) throw Error('Choose at least one audio source.');
+    health.microphone=$('mic').checked;health.system=$('system').checked;
+    this.setStage('prepare');
     $('engine').textContent='Preparing speech model…';
     await api('/engine/prepare',{method:'POST'});
     if ($('mic').checked) {
+      this.setStage('microphone');
       if (!await window.callDesk.microphone()) throw Error(session.platform==='win32'?'Microphone access is denied. In Windows Settings → Privacy & security → Microphone, allow microphone access for desktop apps, then reopen Call Note.':'Microphone access is denied. Enable Call Note in System Settings → Privacy & Security → Microphone, then reopen the app.');
       try {this.streams.push({name:'microphone',stream:await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:$('noise').checked,autoGainControl:true},video:false})});}
       catch(error) {if(session.platform==='win32'&&error.name==='NotAllowedError')throw Error('Microphone access is denied. In Windows Settings → Privacy & security → Microphone, allow microphone access for desktop apps, then reopen Call Note.');throw error;}
     }
     if ($('system').checked) {
+      this.setStage('system');
       const stream=await captureSystemAudio({mediaDevices:navigator.mediaDevices,platform:session.platform});
       this.streams.push({name:'system',stream});
     }
+    this.setStage('calendar');
     await refreshCalendarPreservingDraft();
+    this.setStage('connect');
     this.socket=new WebSocket(location.origin.replace('http:','ws:')+'/api/record');
     await new Promise((resolve,reject)=> {
       const timeout=setTimeout(()=>reject(Error('Recording connection timed out.')),15000);
@@ -106,15 +120,16 @@ class Capture {
         const data=JSON.parse(event.data);
         if(data.type==='ready') {clearTimeout(timeout);show(data.call);resolve();}
         if(data.type==='warning') notice(data.message);
-        if(data.type==='segment') {current.segments.push(data.segment);current.segments.sort((a,b)=>a.start-b.start||a.id-b.id);$('transcript').replaceChildren(...current.segments.map(segment));$('segment-count').textContent=current.segments.length;delete this.partial[data.segment.source];this.renderPartials();}
+        if(data.type==='segment') {health.segmentsReceived++;current.segments.push(data.segment);current.segments.sort((a,b)=>a.start-b.start||a.id-b.id);$('transcript').replaceChildren(...current.segments.map(segment));$('segment-count').textContent=current.segments.length;delete this.partial[data.segment.source];this.renderPartials();}
         if(data.type==='partial') {this.partial[data.source]=data.text;this.renderPartials();}
         if(data.type==='complete') {show(data.call);this.completed?.();}
-        if(data.type==='error') {clearTimeout(timeout);reject(Error(data.message));notice(data.message);this.failed?.(Error(data.message));if(this.active)finish(false);}
+        if(data.type==='error') {clearTimeout(timeout);const error=Error(data.message);reportError(error,this.stage);reject(error);notice(data.message);this.failed?.(error);if(this.active)finish(false);}
       };
-      this.socket.onclose=()=> {if(!this.stopping&&this.active){notice('Recording connection closed. Saved text is retained; the call is marked interrupted.');finish(false);} };
+      this.socket.onclose=()=> {if(!this.stopping&&this.active){const error=Object.assign(Error('Recording connection closed.'),{code:'CAPTURE_CONNECTION'});reportError(error,this.stage);notice('Recording connection closed. Saved text is retained; the call is marked interrupted.');finish(false);} };
     });
     $('levels').replaceChildren();
     for(const source of this.streams) {
+      this.setStage('worklet');
       const context=new AudioContext({sampleRate:16000});this.contexts.push(context);await context.audioWorklet.addModule('/static/pcm-worklet.js');
       const input=context.createMediaStreamSource(new MediaStream(source.stream.getAudioTracks()));
       const node=new AudioWorkletNode(context,'pcm-recorder',{channelCount:1,channelCountMode:'explicit'});this.nodes.push(node);
@@ -122,20 +137,29 @@ class Capture {
       this.meters[source.name]={meter,lastSignal:Date.now(),heard:false};
       node.port.onmessage=event=> {
         if(event.data==='flushed'){node.flushed?.();return;}
-        if(this.socket.readyState!==WebSocket.OPEN)return;
-        if(this.socket.bufferedAmount>1024*1024){notice('Transcription is falling behind. The call was stopped to avoid silently losing audio.');finish(false);return;}
-        const floats=new Float32Array(event.data);const rms=Math.sqrt(floats.reduce((sum,v)=>sum+v*v,0)/floats.length);meter.value=rms;if(rms>.0001){this.meters[source.name].lastSignal=Date.now();this.meters[source.name].heard=true;}
-        const frame=new Uint8Array(event.data.byteLength+1);frame[0]=source.name==='microphone'?0:1;frame.set(new Uint8Array(event.data),1);this.socket.send(frame);
+        this.sendAudioFrame(source.name,event.data,meter);
       };
       input.connect(node);node.connect(context.destination);await context.resume();
-      source.stream.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>{if(!this.stopping){notice(`${labels[source.name]} audio capture ended. The call has been stopped.`);finish(true);}}));
+      source.stream.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>this.trackEnded(source.name)));
     }
+    this.setStage('recording');
     this.active=true;this.started=Date.now();window.callDesk.recording(true);window.callDesk.menuState({phase:'recording',seconds:0,microphone:this.streams.some(s=>s.name==='microphone'),system:this.streams.some(s=>s.name==='system')});$('setup').hidden=true;$('active').hidden=false;
-    timer=setInterval(()=>{window.callDesk.menuState({phase:this.stopping?'saving':'recording',seconds:Math.floor((Date.now()-this.started)/1000)}); $('elapsed').textContent=clock((Date.now()-this.started)/1000); const system=this.meters.system;if(system&&!system.heard&&Date.now()-system.lastSignal>15000){notice(session.platform==='win32'?'No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check your Windows sound output device.':'No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check macOS recording permission.');system.lastSignal=Date.now()+45000;} },1000);
+    timer=setInterval(()=>{if(this.stopping)this.setStage('saving');else reportHealth();window.callDesk.menuState({phase:this.stopping?'saving':'recording',seconds:Math.floor((Date.now()-this.started)/1000)}); $('elapsed').textContent=clock((Date.now()-this.started)/1000); const system=this.meters.system;if(system&&!system.heard&&Date.now()-system.lastSignal>15000){notice(session.platform==='win32'?'No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check your Windows sound output device.':'No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check macOS recording permission.');system.lastSignal=Date.now()+45000;} },1000);
+  }
+  sendAudioFrame(source,data,meter) {
+    if(this.socket.readyState!==WebSocket.OPEN)return;
+    if(this.socket.bufferedAmount>1024*1024){health.backpressureStops++;const error=Object.assign(Error('Transcription is falling behind.'),{code:'CAPTURE_BACKPRESSURE'});reportError(error,this.stage);reportHealth();notice('Transcription is falling behind. The call was stopped to avoid silently losing audio.');finish(false);return;}
+    const floats=new Float32Array(data);const rms=Math.sqrt(floats.reduce((sum,v)=>sum+v*v,0)/floats.length);meter.value=rms;
+    if(rms>.0001){this.meters[source].lastSignal=Date.now();this.meters[source].heard=true;health[source==='microphone'?'microphoneHeard':'systemHeard']=true;}
+    const frame=new Uint8Array(data.byteLength+1);frame[0]=source==='microphone'?0:1;frame.set(new Uint8Array(data),1);this.socket.send(frame);health.framesSent++;
+  }
+  trackEnded(source) {
+    if(this.stopping)return;
+    health.trackEnds++;const error=Object.assign(Error('Audio capture track ended.'),{code:'CAPTURE_ENDED'});reportError(error,this.stage);reportHealth();notice(`${labels[source]} audio capture ended. The call has been stopped.`);finish(true);
   }
   renderPartials() { $('partials').replaceChildren(...Object.entries(this.partial).map(([source,text])=>{const p=document.createElement('div');p.className='partial';p.textContent=`${labels[source]}: ${text}`;return p;})); }
   async stop(graceful=true) {
-    this.stopping=true;
+    this.stopping=true;this.setStage('saving');
     try {
       if(graceful&&this.socket?.readyState===WebSocket.OPEN) {
         await Promise.all(this.nodes.map(node=>new Promise(resolve=>{node.flushed=resolve;node.port.postMessage('stop');setTimeout(resolve,1500);})));
@@ -151,18 +175,19 @@ class Capture {
     if(this.socket){this.socket.onmessage=this.socket.onopen=this.socket.onerror=this.socket.onclose=null;this.socket.close();}
     this.streams=[];this.nodes=[];this.contexts=[];this.socket=null;this.meters={};this.partial={};this.completed=this.failed=null;
     window.callDesk.recording(false);$('partials').replaceChildren();$('levels').replaceChildren();$('active').hidden=true;
+    this.stage='stopped';health.stage='stopped';reportHealth();
   }
 }
 async function finish(graceful=true) {
   if(!capture||capture.stopping)return;
   const recording=capture;window.callDesk.menuState({phase:'saving'});notice();$('stop').disabled=true;$('stop').textContent='Saving…';
-  try {await recording.stop(graceful);} catch(error){notice(error.message);} finally {capture=null;deletion?.render();$('stop').disabled=false;$('stop').textContent='■ Stop & save';await library();await status();if(current)show(await api('/calls/'+current.id));}
+  try {await recording.stop(graceful);} catch(error){reportError(error,'saving');notice(error.message);} finally {capture=null;deletion?.render();$('stop').disabled=false;$('stop').textContent='■ Stop & save';await library();await status();if(current)show(await api('/calls/'+current.id));}
 }
 async function startCapture() {
   if(capture||!ready||sampleRunning)return false;
   notice();$('start').disabled=true;capture=new Capture();deletion?.render();introduction?.suspend();window.callDesk.recording(true);
   try {await capture.start();await library();return true;}
-  catch(error){capture.release();capture=null;deletion?.render();await status();throw error;}
+  catch(error){capture.errorStage=capture.stage;reportError(error,capture.errorStage);capture.setStage('error');capture.release();capture=null;deletion?.render();await status();throw error;}
 }
 $('start').onclick=handle(startCapture);
 $('stop').onclick=handle(()=>finish());

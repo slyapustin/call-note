@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.13 — 2026-10-14
+
+- Expand local diagnostics with failure stages, originating app versions, renderer exit reasons, microphone permission state, and anonymous capture and speaker counters.
+- Keep the latest completed call’s numeric speaker summary across idle service restarts. No audio, transcript text, names, voice profiles, device identifiers or raw exception details are included.
+- Export remains manual from Settings → Support or Help → Export Diagnostics. Existing generic events cannot recover details that were never recorded.
+
 ## 0.2.12 — 2026-10-14
 
 - Reduce false speaker changes: short phrases cannot create a new speaker; ambiguous matches stay uncertain, and strong matches gradually update the voice reference.
