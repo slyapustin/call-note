@@ -77,7 +77,8 @@ def main():
         shutil.rmtree(target)
     shutil.copytree(python, target, symlinks=False, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
     executable = target / 'python.exe'
-    subprocess.run(['uv', 'pip', 'install', '--python', str(executable), '--only-binary', ':all:', '-r', str(common.ROOT / 'requirements-windows.txt')], check=True)
+    # This is a disposable copy owned by the app, never the uv-managed source runtime.
+    subprocess.run(['uv', 'pip', 'install', '--python', str(executable), '--break-system-packages', '--link-mode', 'copy', '--only-binary', ':all:', '-r', str(common.ROOT / 'requirements-windows.txt')], check=True)
     subprocess.run(['uv', 'pip', 'check', '--python', str(executable)], check=True)
     prepare_assets()
     common.prepare_service(architecture='x64', platform='win32')
