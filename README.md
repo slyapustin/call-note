@@ -10,14 +10,14 @@ Call Note transcribes both sides of your calls on your Mac. Find past conversati
 
 *A saved sample conversation. Transcription and your call library stay on your Mac.*
 
-### [Download v0.2.5 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.5/Call-Note-0.2.5-macOS-arm64.dmg)
+### [Download v0.2.6 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.6/Call-Note-0.2.6-macOS-arm64.dmg)
 
-Newest downloadable build · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.5)
+Newest downloadable build · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.6)
 
 **Apple Silicon (M1 or newer) · macOS 14.2+ · English speech**
 
 > [!NOTE]
-> **Signed and notarized.** Call Note v0.2.5 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
+> **Signed and notarized.** Call Note v0.2.6 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
 
 ## Get started
 
@@ -54,6 +54,12 @@ Transcription runs locally. Call Note saves text, not call recordings. Connectin
 
 Recording starts manually. Speaker labels are estimates, especially with short replies, similar voices, or overlapping speech. Earlier saved calls cannot be relabeled because their audio was not retained; run the sample again to try speaker detection. Use headphones to reduce duplicate audio. Google Calendar sign-in is available to approved test accounts. Windows is not available yet.
 
-Install v0.2.5 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
+Install v0.2.6 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
+
+## Share a troubleshooting report
+
+Choose **Help → Export Diagnostics…** to save a text file. Review it, then attach it when [reporting a problem](https://github.com/slyapustin/call-note/issues).
+
+The report includes app/runtime versions and error categories and counts. It excludes transcripts, notes, Calendar details, credentials, and raw log text. Nothing is uploaded automatically.
 
 [Changelog](CHANGELOG.md) · [Report a problem](https://github.com/slyapustin/call-note/issues) · [Developer setup](docs/development.md) · [Release instructions](docs/releases.md)
