@@ -11,7 +11,7 @@
 - Added a database backup before migrating existing transcripts to support speaker labels.
 - Verified three speakers across ten turns in the discussion sample, one speaker in the solo sample, and the streaming audio pipeline. The latest replay processed 111.65 seconds of sample audio in 81.66 seconds, excluding model loading. Passed 34 Python and 19 desktop tests.
 
-Speaker labels are estimates. Older saved calls cannot be reprocessed because their audio was not retained; bundled samples can be run again. The app and installer passed stapling and macOS Gatekeeper checks. An actual version-to-version automatic upgrade has not yet been verified.
+Speaker labels are estimates. Older saved calls cannot be reprocessed because their audio was not retained; bundled samples can be run again. The app and installer passed stapling and macOS Gatekeeper checks. Verified automatic download and installation on quit from 0.2.3 to 0.2.4.
 
 ## 0.2.3 — 2026-10-13
 

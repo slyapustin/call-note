@@ -24,7 +24,7 @@ Calendar checks run once a minute in the main process, including while the windo
 
 Call Note checks automatically after launch and every four hours, downloads newer stable releases in the background, and installs on quit. Test releases require manual installation. Version 0.2.4 includes the signed update ZIP and manifest. When a release lacks those files, checks report that automatic-update packages are unavailable and offer **View downloads**. No GitHub login is needed with public releases. The sidebar shows only the installed version. **Call Note → Check for Updates** remains available for an optional manual check or **Restart & install**.
 
-Restart is blocked while a call is recording or being saved. Calls and Calendar settings remain in your user Library. The 0.2.0 preview requires manual installation; install the current DMG once to enable future automatic updates. The update implementation is tested, but an actual version-to-version automatic upgrade has not yet been verified.
+Restart is blocked while a call is recording or being saved. Calls and Calendar settings remain in your user Library. The 0.2.0 preview requires manual installation; install the current DMG once to enable future automatic updates. Verified a real upgrade from 0.2.3 to 0.2.4: the update downloaded automatically, installed on normal quit, and the installed version was checked before reopening. Upgrades from 0.2.1 have not been tested.
 
 ## Build from source
 
