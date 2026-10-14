@@ -8,10 +8,10 @@ Both systems decoded the same 107.9-second clean synthetic English briefing bund
 
 | System | Build | Audio duration | Decode time | Faster than playback |
 | --- | --- | ---: | ---: | ---: |
-| Apple M1 Pro, 16 GB RAM, MLX | Packaged Mac 0.2.8 | 107.9 s | 1.05 s | 103× |
-| GitHub Windows x64 runner, CPU backend | Windows 0.2.8 preview | 107.9 s | 8.20 s | 13× |
+| Apple M1 Pro, 16 GB RAM, MLX | Packaged Mac 0.2.8, two checks | 107.9 s | 1.05–1.09 s | 99–103× |
+| GitHub Windows x64 runners, CPU backend | Windows 0.2.8 preview, two builds | 107.9 s | 3.43–8.20 s | 13–31× |
 
-The Windows runner uses Windows Server 2022. Its exact CPU model was not recorded; these results do not establish Windows 11 laptop performance. [Windows run and logs](https://github.com/slyapustin/call-note/actions/runs/38589462145). The reproducible offline check is `scripts/bundle_smoke.py`, run using the bundled Python and service directory.
+The Windows runners use Windows Server 2022. Their exact CPU models were not recorded, and hosted-runner performance varied; these results do not establish Windows 11 laptop performance. [First Windows run](https://github.com/slyapustin/call-note/actions/runs/38589462145), [published preview run](https://github.com/slyapustin/call-note/actions/runs/38591115963). The Mac checks were before and after code signing. The reproducible offline check is `scripts/bundle_smoke.py`, run using the bundled Python and service directory.
 
 ## Live drafts on the M1 Pro
 

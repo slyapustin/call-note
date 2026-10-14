@@ -56,8 +56,8 @@ In our tests, Call Note transcribed a **108-second English sample** in:
 
 | Device | Transcription time | Faster than playback |
 | --- | ---: | ---: |
-| Mac with M1 Pro | **1.05 seconds** | **103×** |
-| Windows x64 CI machine, CPU only | **8.2 seconds** | **13×** |
+| Mac with M1 Pro | **About 1.1 seconds** | **About 100×** |
+| Windows x64 CI machines, CPU only | **3.4–8.2 seconds** | **13–31×** |
 
 These measurements use 0.2.8 builds with the model already loaded, excluding startup and speaker detection. In a separate Mac live-stream test, the first draft arrived in about **0.36 seconds**, before accounting for microphone capture and screen rendering. [Test conditions, live timings, and memory measurements](docs/benchmarks.md).
 
