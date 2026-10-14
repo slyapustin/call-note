@@ -6,7 +6,7 @@ const sampleKinds = {sample:'briefing', 'sample-multiparty':'meeting'};
 const sampleAudio = new Map();
 const labels = {microphone:'You',system:'Others',sample:'Sample'};
 const clock = value => `${String(Math.floor(value/60)).padStart(2,'0')}:${String(Math.floor(value%60)).padStart(2,'0')}`;
-function notice(message='') { $('notice').textContent=message; $('notice').hidden=!message; }
+function notice(message='', kind='general') { $('notice').textContent=message; $('notice').hidden=!message; $('notice').dataset.kind=kind; }
 async function api(url, options={}) {
   const response = await fetch('/api'+url, {...options,headers:{'x-call-token':session.token,'Content-Type':'application/json',...options.headers}});
   if (!response.ok) throw Error((await response.json()).detail || 'Request failed.');
@@ -16,12 +16,13 @@ function handle(fn) { return async (...args) => { try {await fn(...args);} catch
 function segment(row) {
   const entry = document.createElement('div'); entry.className='segment';
   const meta=document.createElement('div'); meta.className='meta';
-  const speaker=document.createElement('span'); speaker.className='speaker';speaker.textContent=labels[row.source];
+  const speaker=document.createElement('span'); speaker.className='speaker';if(row.speaker)speaker.classList.add(`voice-${(row.speaker-1)%4}`);speaker.textContent=row.speaker?`Speaker ${row.speaker}`:labels[row.source];
   const time=document.createElement('span');time.textContent=clock(row.start);
   const text=document.createElement('p');text.textContent=row.text;
   meta.append(speaker,time);entry.append(meta,text);return entry;
 }
 function show(call) {
+  if ($('notice').dataset.kind==='sample') notice();
   current=call;
   const meeting=call.calendar_event; $('meeting-details').hidden=!meeting; $('meeting-details').textContent=meeting?`${new Date(meeting.start).toLocaleString()} · ${(meeting.attendees||[]).map(a=>a.name||a.email).join(', ')}${meeting.meeting_url?' · '+meeting.meeting_url:''}`:'';
   $('heading').textContent=call.title; $('setup').hidden=true;
@@ -32,6 +33,7 @@ function show(call) {
   $('export').disabled=false; $('prompt').disabled=false;
   $('call-status').textContent=`${call.status} · ${clock(call.duration)} · ${new Date(call.started_at).toLocaleString()}`;
   $('analyses').replaceChildren(...call.analyses.map(analysis=> {const item=document.createElement('div');item.className='analysis';item.textContent=`${analysis.author} · ${new Date(analysis.created_at).toLocaleString()}\n\n${analysis.markdown}`;return item;}));
+  if(sampleKinds[call.source]&&call.segments.length&&!call.segments.some(row=>row.speaker)) notice('No speaker labels were saved for this sample. Choose New call → Try sample to run speaker detection again.', 'sample');
   loadSampleAudio(call).catch(error=>{if(current?.id===call.id)notice(error.message);});
 }
 async function loadSampleAudio(call) {
@@ -87,6 +89,7 @@ class Capture {
       this.socket.onmessage=event=> {
         const data=JSON.parse(event.data);
         if(data.type==='ready') {clearTimeout(timeout);show(data.call);resolve();}
+        if(data.type==='warning') notice(data.message);
         if(data.type==='segment') {current.segments.push(data.segment);current.segments.sort((a,b)=>a.start-b.start||a.id-b.id);$('transcript').replaceChildren(...current.segments.map(segment));$('segment-count').textContent=current.segments.length;delete this.partial[data.segment.source];this.renderPartials();}
         if(data.type==='partial') {this.partial[data.source]=data.text;this.renderPartials();}
         if(data.type==='complete') {show(data.call);this.completed?.();}
@@ -134,7 +137,7 @@ async function finish(graceful=true) {
 $('start').onclick=handle(async()=> {notice();$('start').disabled=true;capture=new Capture();window.callDesk.recording(true);try{await capture.start();await library();}catch(error){capture.release();capture=null;await status();throw error;}});
 $('stop').onclick=handle(()=>finish());
 $('new').onclick=()=>{if(capture){notice('Stop the current call before starting another.');return;}current=null;$('sample-audio').pause();$('sample-audio').hidden=true;$('transcript').replaceChildren();$('segment-count').textContent='0';$('notes').value='';$('notes').disabled=true;$('save-notes').disabled=true;$('export').disabled=true;$('prompt').disabled=true;$('analyses').replaceChildren();$('meeting-details').hidden=true;$('call-status').textContent='';notice();$('title').value='';selectedEvent=null;handle(refreshCalendar)();$('setup').hidden=false;$('heading').textContent='Ready when you are.';$('title').focus();};
-$('demo').onclick=handle(async()=>{const kind=$('sample-kind').value;notice('Transcribing the sample locally…');$('demo').disabled=true;try{show(await api(`/demo?sample=${kind}`,{method:'POST'}));notice('Sample saved. Press play below the transcript to listen. Voices are not labeled individually yet.');await library();}finally{await status();}});
+$('demo').onclick=handle(async()=>{const kind=$('sample-kind').value;notice('Detecting speakers and transcribing the sample locally…');$('demo').disabled=true;try{show(await api(`/demo?sample=${kind}`,{method:'POST'}));const speakers=new Set(current.segments.map(row=>row.speaker).filter(Boolean)).size;notice(speakers?`Sample saved · ${speakers} ${speakers===1?'speaker':'speakers'} detected. Press play above the transcript to listen.`:'Sample saved, but no reliable speaker labels were detected. Use the player above the transcript to listen, or choose New call → Try sample to try again.', 'sample');await library();}finally{await status();}});
 $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(handle(()=>library()),200);};
 $('more').onclick=handle(()=>library(true));
 $('save-notes').onclick=handle(async()=>{current=await api('/calls/'+current.id,{method:'PATCH',body:JSON.stringify({notes:$('notes').value})});notice('Notes saved.');});

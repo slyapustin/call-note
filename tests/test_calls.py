@@ -51,6 +51,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(call_app, 'TOKEN', 'test-token')
     monkeypatch.setattr(call_app.engine, 'status', 'ready')
     monkeypatch.setattr(call_app.engine, 'busy', False)
+    monkeypatch.setattr(call_app, 'speaker_session', lambda: None)
     return TestClient(call_app.app, headers={'x-call-token': 'test-token'})
 
 
@@ -69,7 +70,7 @@ def test_samples_keep_distinct_playback_and_preserve_original(client, monkeypatc
     decoded = []
     async def transcribe(function, path, hotwords):
         decoded.append(path.name)
-        return {'audio_seconds':120, 'text':'Three people discuss next steps.'}
+        return {'audio_seconds':120, 'segments':[{'start':0, 'end':120, 'speaker':1, 'text':'Three people discuss next steps.'}]}
     monkeypatch.setattr(call_app, 'engine_call', transcribe)
     original = client.post('/api/demo').json()
     meeting = client.post('/api/demo?sample=meeting').json()
@@ -120,6 +121,40 @@ def test_dual_stream_persistence_and_flush(client, monkeypatch):
     assert not call_app.engine.busy
 
 
+@pytest.mark.parametrize('sources', [['microphone'], ['system'], ['microphone', 'system']])
+def test_missing_speaker_model_preserves_recording(client, monkeypatch, sources):
+    attempts = []
+    def unavailable():
+        attempts.append(True)
+        raise RuntimeError('Speaker model cannot load')
+    monkeypatch.setattr(call_app, 'speaker_session', unavailable)
+    monkeypatch.setattr(call_app, 'LiveTranscriber', FakeLive)
+    with client.websocket_connect('/api/record', headers={'origin':'http://testserver'}) as ws:
+        ws.send_json({'token':'test-token', 'sources':sources})
+        ready = ws.receive_json()
+        assert ready['type'] == 'ready'
+        if 'system' in sources:
+            warning = ws.receive_json()
+            assert warning['type'] == 'warning'
+            assert 'Recording continues' in warning['message']
+        for source in sources:
+            channel = ('microphone', 'system').index(source)
+            ws.send_bytes(bytes([channel])+struct.pack('<800f', *([.1]*800)))
+            assert ws.receive_json()['type'] == 'partial'
+            segment = ws.receive_json()['segment']
+            assert segment['source'] == source
+            assert segment['speaker'] is None
+        ws.send_json({'type':'stop'})
+        for _ in sources:
+            assert ws.receive_json()['type'] == 'segment'
+        saved = ws.receive_json()['call']
+        assert saved['status'] == 'complete'
+        assert len(saved['segments']) == 2*len(sources)
+        assert {s['source'] for s in saved['segments']} == set(sources)
+    assert len(attempts) == int('system' in sources)
+    assert not call_app.engine.busy
+
+
 def test_disconnect_and_malformed_frame(client, monkeypatch):
     monkeypatch.setattr(call_app, 'LiveTranscriber', FakeLive)
     with client.websocket_connect('/api/record', headers={'origin':'http://testserver'}) as ws:
@@ -138,10 +173,10 @@ def test_disconnect_and_malformed_frame(client, monkeypatch):
 def test_mcp_stdio_reads_and_saves(tmp_path):
     store=CallStore(tmp_path)
     call=store.create('MCP test')
-    store.append(call['id'],'system',0,4,'Send the proposal on Friday.')
+    store.append(call['id'],'system',0,4,'Send the proposal on Friday.', speaker=2)
     store.finish(call['id'],4)
     async def check():
-        server=StdioServerParameters(command=sys.executable,args=[str(Path(__file__).parent/'call_mcp.py')],env={**os.environ,'CALL_DESK_DATA':str(tmp_path)})
+        server=StdioServerParameters(command=sys.executable,args=[str(Path(__file__).resolve().parents[1]/'service/call_mcp.py')],env={**os.environ,'CALL_DESK_DATA':str(tmp_path)})
         async with Client(server) as client:
             assert {t.name for t in (await client.list_tools()).tools}=={'list_calls','get_call','save_call_analysis'}
             result=await client.call_tool('list_calls', {'query':'proposal'})
@@ -150,6 +185,8 @@ def test_mcp_stdio_reads_and_saves(tmp_path):
             result=await client.call_tool('get_call', {'call_id':call['id']})
             assert not result.is_error
             assert 'Friday' in str(result)
+            import json
+            assert json.loads(result.content[0].text)['segments'][0]['speaker'] == 2
             result=await client.call_tool('save_call_analysis', {'call_id':call['id'],'markdown':'Send the proposal. [segment 1]','author':'Test'})
             assert not result.is_error
     asyncio.run(check())

@@ -12,6 +12,7 @@ const token = randomBytes(32).toString('hex');
 let origin;
 const bundled = app.isPackaged && fs.existsSync(path.join(process.resourcesPath, 'service'));
 const root = bundled ? path.join(process.resourcesPath, 'service') : path.resolve(__dirname, '..');
+const serviceRoot = bundled ? root : path.join(root, 'service');
 const python = bundled ? path.join(process.resourcesPath, 'python/bin/python3.13') : path.join(root, '.venv/bin/python');
 if (!app.requestSingleInstanceLock()) app.quit();
 function showWindow(){window?.show();window?.focus();}
@@ -55,7 +56,7 @@ app.whenReady().then(async () => {
   delete environment.PYTHONPATH; delete environment.PYTHONHOME;
   if (bundled) {environment.CALL_NOTE_MODEL=path.join(root,'models/model_phonon2_c4c_int6'); environment.HF_HUB_OFFLINE='1';}
   service = spawn(python, ['-m', 'uvicorn', 'call_app:app', '--host', '127.0.0.1', '--port', String(port), '--ws-max-size', '65536'], {
-    cwd:root, env:environment, stdio:['ignore', log, log]
+    cwd:serviceRoot, env:environment, stdio:['ignore', log, log]
   });
   service.on('error', error => dialog.showErrorBox('Call Note service failed', error.message));
   service.on('exit', code => { if (!quitting) dialog.showErrorBox('Call Note service stopped', `Exit ${code}. See ${path.join(data, 'service.log')}`); });
@@ -72,7 +73,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('connect-assistants', async event => {
     if (!trusted(event)) throw Error('Untrusted window');
     return new Promise((resolve,reject)=>{
-      const child=spawn(python,[path.join(root,'connect_mcp.py')],{cwd:root,env:{...environment,CALL_NOTE_PYTHON:python}});
+      const child=spawn(python,[path.join(serviceRoot,'connect_mcp.py')],{cwd:root,env:{...environment,CALL_NOTE_PYTHON:python}});
       let output='';child.stdout.on('data',data=>output+=data);child.stderr.on('data',data=>output+=data);
       child.on('error',reject);child.on('exit',code=>code===0?resolve(output):reject(Error(output)));
     });

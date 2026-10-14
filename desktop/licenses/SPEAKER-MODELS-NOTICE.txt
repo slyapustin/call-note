@@ -1,0 +1,18 @@
+Call Note speaker detection
+
+Runtime: sherpa-onnx 1.13.8, Apache-2.0
+https://github.com/k2-fsa/sherpa-onnx
+
+Segmentation: pyannote/segmentation-3.0, MIT, Copyright (c) 2022 CNRS.
+https://huggingface.co/pyannote/segmentation-3.0
+Public ONNX conversion distributed by sherpa-onnx:
+https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-segmentation-models
+See pyannote-segmentation-MIT.txt.
+
+Speaker embeddings: 3D-Speaker ERes2Net base, Apache-2.0.
+https://github.com/modelscope/3D-Speaker
+Public ONNX conversion distributed by sherpa-onnx:
+https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-recongition-models
+See 3D-Speaker-Apache-2.0.txt.
+
+Call Note uses unmodified model weights in ONNX format. The source download script records SHA-256 integrity pins. Speaker identities are estimates, not identity verification.

@@ -6,5 +6,5 @@ say -v Samantha -r 165 -o samples/demo.aiff 'This is a local speech recognition 
 ffmpeg -nostdin -hide_banner -loglevel error -y -i samples/demo.aiff -ar 16000 -ac 1 samples/demo.wav
 .venv/bin/python -c 'import wave; w = wave.open("samples/demo.wav"); assert w.getnframes() > 1600, "Speech synthesis produced no audio. Run this script in Terminal outside a sandbox."'
 echo 'Sample ready: samples/demo.wav'
-.venv/bin/python build_samples.py
+.venv/bin/python scripts/build_samples.py
 .venv/bin/python scripts/build_meeting_sample.py

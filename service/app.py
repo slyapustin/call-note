@@ -21,7 +21,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from streaming import LiveTranscriber
 
-ROOT = Path(__file__).resolve().parent
+SERVICE = Path(__file__).resolve().parent
+ROOT = SERVICE if (SERVICE / "desktop/ui").exists() else SERVICE.parent
 MAX_BYTES = 32 * 1024 * 1024
 MAX_SECONDS = 600
 SAMPLES = {

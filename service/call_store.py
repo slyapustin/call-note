@@ -26,6 +26,17 @@ class CallStore:
         self.directory = Path(directory) if directory else data_directory()
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.path = self.directory / "calls.sqlite3"
+        if self.path.exists():
+            with sqlite3.connect(self.path) as source:
+                columns = {row[1] for row in source.execute("PRAGMA table_info(segments)")}
+                if columns and "speaker" not in columns:
+                    backups = self.directory / 'backups'
+                    backups.mkdir(exist_ok=True, mode=0o700)
+                    backup = backups / f'calls-before-speakers-{uuid.uuid4().hex}.sqlite3'
+                    with sqlite3.connect(backup) as target:
+                        source.backup(target)
+                    if os.name != 'nt':
+                        backup.chmod(0o600)
         with self.connect() as db:
             db.executescript("""
                 PRAGMA journal_mode=WAL;
@@ -48,6 +59,9 @@ class CallStore:
             columns = {row[1] for row in db.execute("PRAGMA table_info(calls)")}
             if "calendar_event" not in columns:
                 db.execute("ALTER TABLE calls ADD COLUMN calendar_event TEXT")
+            columns = {row[1] for row in db.execute("PRAGMA table_info(segments)")}
+            if "speaker" not in columns:
+                db.execute("ALTER TABLE segments ADD COLUMN speaker INTEGER")
         if os.name != "nt":
             self.path.chmod(0o600)
 
@@ -73,14 +87,16 @@ class CallStore:
                        (call_id, title.strip()[:200] or "Untitled call", now(), source, json.dumps(calendar_event) if calendar_event else None))
         return self.get(call_id)
 
-    def append(self, call_id, source, start, end, text):
+    def append(self, call_id, source, start, end, text, speaker=None):
         if source not in {"microphone", "system", "sample"}:
             raise ValueError("Unknown audio source")
+        if speaker is not None and (type(speaker) is not int or not 1 <= speaker <= 32):
+            raise ValueError("Invalid speaker label")
         if not text.strip():
             return None
         with self.connect() as db:
-            cursor = db.execute("INSERT INTO segments(call_id,source,start,end,text) VALUES(?,?,?,?,?)",
-                                (call_id, source, start, end, text.strip()))
+            cursor = db.execute("INSERT INTO segments(call_id,source,start,end,text,speaker) VALUES(?,?,?,?,?,?)",
+                                (call_id, source, start, end, text.strip(), speaker))
             db.execute("UPDATE calls SET duration=MAX(duration,?) WHERE id=?", (end, call_id))
             return dict(db.execute("SELECT * FROM segments WHERE id=?", (cursor.lastrowid,)).fetchone())
 
@@ -143,7 +159,7 @@ def transcript_markdown(call):
     lines = [f"# {call['title']}", "", f"Call ID: {call['id']}", f"Started: {call['started_at']}", ""]
     for segment in call["segments"]:
         seconds = int(segment["start"])
-        lines.append(f"[{seconds // 60:02}:{seconds % 60:02}] {labels[segment['source']]} (segment {segment['id']}): {segment['text']}")
+        lines.append(f"[{seconds // 60:02}:{seconds % 60:02}] {('Speaker ' + str(segment['speaker'])) if segment.get('speaker') else labels[segment['source']]} (segment {segment['id']}): {segment['text']}")
     if call["notes"]:
         lines.extend(["", "## Notes", call["notes"]])
     return "\n".join(lines)

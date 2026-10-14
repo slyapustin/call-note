@@ -27,8 +27,8 @@ def main():
     service=BUNDLE/'service'
     if service.exists():shutil.rmtree(service)
     service.mkdir()
-    for name in ['app.py','call_app.py','call_store.py','call_mcp.py','streaming.py','connect_mcp.py']:
-        shutil.copy2(ROOT/name,service/name)
+    for name in ['app.py','call_app.py','call_store.py','call_mcp.py','streaming.py','connect_mcp.py','diarization.py']:
+        shutil.copy2(ROOT/'service'/name,service/name)
     for name in ['static','desktop/ui','desktop/licenses']:
         shutil.copytree(ROOT/name,service/name)
     (service/'samples').mkdir()
@@ -36,6 +36,9 @@ def main():
         shutil.copy2(ROOT/'samples'/name,service/'samples'/name)
     model=ROOT/'.cache/fermion/speech/FermionResearch__Phonon-2/model_phonon2_c4c_int6'
     shutil.copytree(model,service/'models'/model.name)
+    (service/'models/diarization').mkdir()
+    for name in ['segmentation.onnx','embedding.onnx']:
+        shutil.copy2(ROOT/'models/diarization'/name, service/'models/diarization'/name)
     shutil.copy2(ROOT/'requirements.txt',service/'requirements.txt')
     manifest={'python':PYTHON_VERSION,'model_sha256':hashlib.sha256((model/'model.fermion').read_bytes()).hexdigest(),'architecture':'arm64','model_license':'CC-BY-4.0','runtime_license':'Apache-2.0'}
     (service/'bundle.json').write_text(json.dumps(manifest,indent=2)+'\n')

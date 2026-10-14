@@ -10,4 +10,4 @@ if [[ ! -x .venv/bin/python ]]; then
   echo 'Run ./setup.sh first.' >&2
   exit 1
 fi
-exec .venv/bin/python -m uvicorn app:app --host 127.0.0.1 --port "${PORT:-8765}"
+exec .venv/bin/python -m uvicorn app:app --app-dir service --host 127.0.0.1 --port "${PORT:-8765}"

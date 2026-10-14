@@ -11,7 +11,7 @@ import re
 import tomllib
 
 ROOT = Path(__file__).resolve().parent
-PYTHON = Path(os.environ.get('CALL_NOTE_PYTHON', ROOT / '.venv/bin/python'))
+PYTHON = Path(os.environ.get('CALL_NOTE_PYTHON', ROOT.parent / '.venv/bin/python'))
 ENTRY = {'command': str(PYTHON), 'args': ['-B', str(ROOT / 'call_mcp.py')]}
 
 

@@ -5,7 +5,7 @@ import sys
 from mcp import Client, StdioServerParameters
 
 async def main():
-    server=StdioServerParameters(command=sys.executable,args=[str(Path(__file__).with_name('call_mcp.py'))])
+    server=StdioServerParameters(command=sys.executable,args=[str(Path(__file__).resolve().parents[1]/'service/call_mcp.py')])
     async with Client(server) as client:
         tools=await client.list_tools()
         print('Tools:', ', '.join(t.name for t in tools.tools))

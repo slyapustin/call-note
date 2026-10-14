@@ -3,7 +3,7 @@ import json
 import os
 from pathlib import Path
 
-root = Path(__file__).resolve().parent
+root = Path(__file__).resolve().parents[1]
 os.environ.setdefault("HF_HOME", str(root / ".cache/huggingface"))
 os.environ.setdefault("FERMION_CACHE_DIR", str(root / ".cache/fermion"))
 os.environ["FERMION_DEVICE"] = "mlx"

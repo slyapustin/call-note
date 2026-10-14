@@ -19,6 +19,23 @@ from streaming import LiveTranscriber
 
 TOKEN = os.environ.get('CALL_DESK_TOKEN', secrets.token_urlsafe(32))
 store = None
+diarizer = None
+
+def speaker_session():
+    global diarizer
+    from diarization import Diarizer, SpeakerSession
+    if diarizer is None:
+        diarizer = Diarizer(ROOT / "models/diarization")
+    return SpeakerSession(diarizer)
+
+def transcribe_sample(path, hotwords):
+    import soundfile as sf
+    audio, rate = sf.read(path, dtype="float32")
+    if rate != 16000 or audio.ndim != 1:
+        raise ValueError("The sample must be mono 16 kHz audio.")
+    segments = speaker_session().transcribe(audio, engine.model, hotwords)
+    return {"audio_seconds": len(audio)/rate, "segments": segments}
+
 SAMPLES = {
     'briefing': ('long-clean.wav', 'Sample · Project briefing', 'sample'),
     'meeting': ('meeting.wav', 'Sample · Three-person discussion', 'sample-multiparty'),
@@ -86,9 +103,10 @@ async def demo(sample: Literal['briefing', 'meeting'] = 'briefing'):
     engine.busy = True
     try:
         filename, title, source = SAMPLES[sample]
-        result = await engine_call(engine.transcribe_wav, ROOT / 'samples' / filename, [])
+        result = await engine_call(transcribe_sample, ROOT / 'samples' / filename, [])
         call = store.create(title, source)
-        store.append(call['id'], 'sample', 0, result['audio_seconds'], result['text'])
+        for segment in result['segments']:
+            store.append(call['id'], 'sample', segment['start'], segment['end'], segment['text'], segment.get('speaker'))
         store.finish(call['id'], result['audio_seconds'])
         return store.get(call['id'])
     finally:
@@ -118,10 +136,12 @@ async def record(socket: WebSocket):
             if event['type'] == 'final':
                 end = offsets[source] + event.get('end', sessions[source].samples / 16000)
                 start = offsets[source] + event['start'] if 'start' in event else boundaries[source]
-                segment = store.append(call['id'], source, start, end, event['text'])
+                segment = store.append(call['id'], source, start, end, event['text'], event.get('speaker'))
                 boundaries[source] = end
                 if segment:
                     await socket.send_json({'type': 'segment', 'segment': segment})
+            elif event['type'] == 'warning':
+                await socket.send_json(event)
             elif event['type'] == 'partial':
                 await socket.send_json({'type': 'partial', 'source': source, 'text': event['text']})
 
@@ -140,10 +160,19 @@ async def record(socket: WebSocket):
             raise ValueError('Invalid calendar event metadata.')
         call = store.create(str(config.get('title', 'Untitled call')), calendar_event=event)
         started = time.monotonic()
+        speaker_warning = False
         for source in sources:
-            sessions[source] = await engine_call(LiveTranscriber, engine.model, [])
+            speakers = None
+            if source == "system":
+                try:
+                    speakers = await engine_call(speaker_session)
+                except Exception:
+                    speaker_warning = True
+            sessions[source] = await engine_call(LiveTranscriber, engine.model, [], speakers)
             boundaries[source] = 0
         await socket.send_json({'type': 'ready', 'call': call})
+        if speaker_warning:
+            await socket.send_json({'type': 'warning', 'message': 'Speaker detection is unavailable. Recording continues; system audio will be labeled Others.'})
         while True:
             message = await asyncio.wait_for(socket.receive(), timeout=30)
             if message['type'] == 'websocket.disconnect':
@@ -190,7 +219,7 @@ async def record(socket: WebSocket):
                         if event['type'] == 'final':
                             end = offsets.get(source, 0) + event.get('end', session.samples / 16000)
                             start = offsets.get(source, 0) + event['start'] if 'start' in event else boundaries[source]
-                            store.append(call['id'], source, start, end, event['text'])
+                            store.append(call['id'], source, start, end, event['text'], event.get('speaker'))
                             boundaries[source] = end
                     session.events = []
                 except Exception:

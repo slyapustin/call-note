@@ -18,6 +18,13 @@ assert engine.status=='ready',engine.error
 result=engine.transcribe_wav(service/'samples/long-clean.wav',[])
 assert 'project review' in result['text'].lower(),result['text']
 print('Offline model:',engine.status,'sample duration:',round(result['audio_seconds'],1),'decode:',round(result['processing_seconds'],2))
+from diarization import Diarizer, SpeakerSession
+import soundfile as sf
+audio, rate = sf.read(service/'samples/meeting.wav', dtype='float32')
+assert rate == 16000
+turns = SpeakerSession(Diarizer(service/'models/diarization')).turns(audio[:160000])
+assert turns and {turn['speaker'] for turn in turns} == {1}, turns
+print('Bundled speaker detection: passed')
 engine.pool.shutdown()
 from mcp import Client, StdioServerParameters
 from call_store import CallStore

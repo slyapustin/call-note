@@ -27,6 +27,7 @@ token*.json
 
 .build/
 release/
+models/
 
 samples/meeting-turns.json
 desktop/google-oauth.json

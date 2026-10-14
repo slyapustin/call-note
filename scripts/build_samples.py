@@ -4,7 +4,7 @@ import subprocess
 import numpy as np
 import soundfile as sf
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 SAMPLES = ROOT / "samples"
 
 

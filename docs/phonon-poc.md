@@ -41,7 +41,7 @@ GPU work stays on the same single worker as file transcription. One recording ho
 The model now receives a warmup decode during startup. A paced WebSocket smoke test on the M1 Pro produced its first partial at **0.42 s**, 21 partial updates, a finalized phrase at 10.79 s and completion at 11.43 s (10.42 s speech plus 1 s appended silence). The final words matched the reference, apart from punctuation. These measurements exercise the live server with synthetic audio; microphone/browser timing can differ.
 
 ```sh
-.venv/bin/python stream_smoke.py
+.venv/bin/python scripts/stream_smoke.py
 ```
 
 This saves the full update sequence to `test-results/live-stream.json`. The WebSocket protocol is: send `{ "type": "start", "sample_rate": 16000, "hotwords": [] }`, wait for `ready`, send little-endian float32 binary blocks of at most 800 samples, then send `{ "type": "stop" }`. Responses are `partial`, `final`, `complete`, or `error`. `final_text` carries all committed text and a partial's `text` replaces the current provisional phrase.
@@ -73,8 +73,8 @@ Processing includes conversion and inference, excludes HTTP upload and model loa
 Run your own comparison:
 
 ```sh
-.venv/bin/python benchmark.py samples/demo.wav
-.venv/bin/python benchmark.py /path/to/recording.m4a --runs 3
+.venv/bin/python scripts/benchmark.py samples/demo.wav
+.venv/bin/python scripts/benchmark.py /path/to/recording.m4a --runs 3
 ```
 
 Detailed results are written to `test-results/benchmark.json`. File transcription's timing-data download includes the original model output, word/segment timestamps, conversion/decode/processing timings, and separately the current edited text.
@@ -90,7 +90,7 @@ brew install python@3.13 ffmpeg  # only if missing
 ./run.sh
 ```
 
-Make sure `python3` selects the new Python rather than macOS's bundled Python. The first launch downloads and verifies the official model. Caches live under this project's `.cache/`. After installation and model caching, transcription runs locally without an API key or cloud inference. `check_engine.py` downloads/loads the model and prints the actual backend and GPU.
+Make sure `python3` selects the new Python rather than macOS's bundled Python. The first launch downloads and verifies the official model. Caches live under this project's `.cache/`. After installation and model caching, transcription runs locally without an API key or cloud inference. `scripts/check_engine.py` downloads/loads the model and prints the actual backend and GPU.
 
 ## Scope and data handling
 
@@ -112,13 +112,13 @@ Fourteen backend tests cover invalid and empty audio, size/duration/hotword limi
 
 The browser sample flow, sample playback, and real microphone recording were verified. Live browser capture was also checked in regular Chrome: partial text appeared during a 9.5-second recording, Stop finalized the transcript, and the recording became available in the player. The automated browser session returned microphone denial despite granted site permission; opening the same local URL in the user's regular Chrome profile resolved recording without changing macOS permissions. Desktop layout was visually checked. Mobile layout and Safari recording have not been tested.
 
-- `app.py`: FastAPI, persistent model, one inference worker, conversion and validation.
+- `service/app.py`: FastAPI, persistent model, one inference worker, conversion and validation.
 - `static/`: browser recording, upload, transcript editing, export and timing display.
 - `run.sh`, `setup.sh`, `make_sample.sh`: launch, install and generate test speech.
-- `benchmark.py`: repeatable local API measurements.
-- `build_samples.py`: repeatable generation of the longer clean/noisy/muffled fixtures.
-- `streaming.py`, `static/live.js`, `static/pcm-worklet.js`: live decoding and browser capture.
-- `stream_smoke.py`: paced end-to-end WebSocket verification.
+- `scripts/benchmark.py`: repeatable local API measurements.
+- `scripts/build_samples.py`: repeatable generation of the longer clean/noisy/muffled fixtures.
+- `service/streaming.py`, `static/live.js`, `static/pcm-worklet.js`: live decoding and browser capture.
+- `scripts/stream_smoke.py`: paced end-to-end WebSocket verification.
 
 ## Attribution
 

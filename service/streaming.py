@@ -3,9 +3,12 @@ import time
 
 
 class LiveTranscriber:
-    def __init__(self, model, hotwords):
+    def __init__(self, model, hotwords, speakers=None):
         from fermion._speech.live import LiveSession
 
+        self.speakers = speakers
+        self.last_audio = None
+        self.audio_base = 0.0
         self.model = model
         self.hotwords = hotwords
         self.decode_seconds = 0.0
@@ -22,6 +25,8 @@ class LiveTranscriber:
         levels = np.asarray([np.sqrt(np.mean(block * block)) for block in blocks])
         voiced = np.flatnonzero(levels > max(0.004, 0.18 * float(levels.max(initial=0))))
         base = max(0, self.samples - len(audio)) / 16000
+        self.last_audio = audio
+        self.audio_base = base
         self.last_bounds = (base + voiced[0] * .05, base + min(len(audio), (voiced[-1] + 1) * 800) / 16000) if len(voiced) else (base, self.samples / 16000)
         result = self.model.transcribe_array(audio, hotwords=self.hotwords)
         self.decode_seconds += result[1]
@@ -31,6 +36,14 @@ class LiveTranscriber:
         self.events.append({"type": "partial", "final_text": self.session.transcript, "text": text})
 
     def final(self, text):
+        if self.speakers is not None:
+            try:
+                turns = self.speakers.transcribe(self.last_audio, self.model, self.hotwords, fallback=text)
+                for turn in turns:
+                    self.events.append({**turn, "type": "final", "start": self.audio_base + turn["start"], "end": self.audio_base + turn["end"]})
+                return
+            except Exception:
+                self.events.append({"type": "warning", "message": "Speaker detection failed for a phrase. Its transcript is saved without a speaker label."})
         self.events.append({"type": "final", "final_text": self.session.transcript, "text": text, "start": float(self.last_bounds[0]), "end": float(self.last_bounds[1])})
 
     def feed(self, data):
@@ -41,6 +54,10 @@ class LiveTranscriber:
             raise ValueError("Audio must contain finite float32 samples between -1 and 1.")
         self.samples += len(audio)
         self.session.feed(audio)
+        if self.speakers is not None and any(event['type'] == 'partial' for event in self.events):
+            # The pinned Fermion rolling decoder exposes no cadence option. Give
+            # speaker inference room by spacing system-audio drafts one second apart.
+            self.session._next_partial = self.session._samples + 16000
         events, self.events = self.events, []
         return events
 

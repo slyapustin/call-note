@@ -11,7 +11,7 @@ def list_calls(query: str = '', limit: int = 20, offset: int = 0) -> list[dict]:
 
 @mcp.tool()
 def get_call(call_id: str) -> dict:
-    """Read a saved call, timestamped source segments, notes and previous analyses. You is the microphone; Others is all system audio, not individual speaker identification."""
+    """Read a saved call, timestamped segments, notes and previous analyses. Source identifies microphone, system audio or sample. Optional speaker numbers estimate distinct voices within this call, not names or identities; null means unknown. Microphone is You. Labels can be wrong, especially for overlapping speech."""
     return CallStore().get(call_id)
 
 @mcp.tool()
