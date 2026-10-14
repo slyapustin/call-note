@@ -97,3 +97,12 @@ test('unreadable logs and unwritable persistence do not prevent diagnostics for 
   assert.match(report, /Service log: unavailable/);
   assert.doesNotMatch(report, /secret-path/);
 });
+
+test('capture exception names and bounded stages survive export and reload without raw detail', t => {
+  const {diagnostics, options}=fixture(t);
+  for(const code of ['CAPTURE_SOURCE','CAPTURE_OPEN','CAPTURE_TRACK'])diagnostics.record('renderer',{name:'NotReadableError',code,message:'private device name'});
+  const report=new Diagnostics(options).exportReport();
+  for(const code of ['CAPTURE_SOURCE','CAPTURE_OPEN','CAPTURE_TRACK'])assert.ok(report.includes(code));
+  assert.ok(report.includes('NotReadableError'));
+  assert.ok(!report.includes('private device name'));
+});

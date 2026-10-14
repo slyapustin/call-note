@@ -97,14 +97,8 @@ app.whenReady().then(async () => {
   service.start();
   session.defaultSession.setPermissionCheckHandler((contents, permission, requestingOrigin) => contents === window?.webContents && requestingOrigin === origin && ['media', 'display-capture'].includes(permission));
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(contents === window?.webContents && contents.getURL().startsWith(origin + '/') && ['media', 'display-capture'].includes(permission)));
-  session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
-    try {
-      if (!request.frame?.url.startsWith(origin + '/')) return callback({});
-      const sources = await desktopCapturer.getSources({types:['screen'], thumbnailSize:{width:0,height:0}});
-      if (!sources.length) return callback({});
-      callback({video:sources[0], audio:'loopback'});
-    } catch { callback({}); }
-  });
+  const {createDisplayMediaHandler}=require('./capture-source.cjs');
+  session.defaultSession.setDisplayMediaRequestHandler(createDisplayMediaHandler({platform:process.platform,getContents:()=>window?.webContents,getOrigin:()=>origin,desktopCapturer,reportError:error=>diagnostics.record('renderer',error)}));
   ipcMain.handle('session', event => { if (!trusted(event)) throw Error('Untrusted window'); return {token, platform:process.platform, version:app.getVersion()}; });
   ipcMain.handle('microphone', async event => {
     if (!trusted(event)) throw Error('Untrusted window');
@@ -134,7 +128,7 @@ app.whenReady().then(async () => {
     settingsFile:path.join(data,'call-detection.json'),Notification,dialog,ipcMain,trusted,show:showWindow,
     getBusy:()=>quitting||recording||callTray.state.busy||callTray.state.phase!=='idle',
     canStart:()=>!quitting&&!recording&&callTray.state.phase==='idle'&&['idle','ready'].includes(callTray.state.engine)&&!callTray.state.busy,
-    hasPermissions:()=>process.platform==='darwin'&&['microphone','screen'].every(kind=>systemPreferences.getMediaAccessStatus(kind)==='granted'),
+    hasPermissions:()=>process.platform==='darwin'&&systemPreferences.getMediaAccessStatus('microphone')==='granted',
     start:request=>{if(!request.automatic)showWindow();window.webContents.send('detection:start',request);},
     onChange:state=>callTray.setDetection(state)});
   callTray.setDetection(callDetection.status());

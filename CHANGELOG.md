@@ -2,8 +2,10 @@
 
 ## 0.2.11 — 2026-10-14
 
+- Removed desktop screen enumeration from Mac system-audio capture. Use a temporary video track of Call Note itself, discard it immediately, and keep loopback audio. Live capture validation remains pending.
+- Preserve capture failure categories and sanitized diagnostic stages instead of labeling every error as permission denial.
 - Added macOS call detection using microphone activity from recognized meeting apps and browsers. Choose Off, Ask me to start (default), or Start transcription automatically in Settings → General or the menu bar.
-- Automatic starts require existing capture permissions, preserve unsaved notes, and work while the speech model is resting. Use Stop & save when finished. Calendar events alone do not start capture.
+- Automatic starts require microphone permission (macOS may still ask for system-audio consent), preserve unsaved notes, and work while the speech model is resting. Use Stop & save when finished. Calendar events alone do not start capture.
 - Detection is a likely-call signal: pre-join screens and microphone tests may trigger it; muted/listening-only calls may be missed. Live meeting-app transitions are not yet validated.
 
 ## 0.2.10 — 2026-10-14

@@ -1,3 +1,4 @@
+import {captureSystemAudio} from './capture-source.js';
 import {setupIntroduction} from './introduction.js';
 import {setupSettings} from './settings.js';
 import {setupDeleteCall} from './delete-call.js';
@@ -92,10 +93,8 @@ class Capture {
       catch(error) {if(session.platform==='win32'&&error.name==='NotAllowedError')throw Error('Microphone access is denied. In Windows Settings → Privacy & security → Microphone, allow microphone access for desktop apps, then reopen Call Note.');throw error;}
     }
     if ($('system').checked) {
-      let stream;
-      try {stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:{width:320,height:180,frameRate:1}});} catch {throw Error(session.platform==='win32'?'System-audio capture was not allowed. Check your Windows sound output device and try again. You can also start with microphone only.':'System-audio capture was not allowed. Enable Call Note in macOS Privacy & Security → Screen & System Audio Recording, then reopen the app. You can also start with microphone only.');}
+      const stream=await captureSystemAudio({mediaDevices:navigator.mediaDevices,platform:session.platform});
       this.streams.push({name:'system',stream});
-      if (!stream.getAudioTracks().length) throw Error(session.platform==='win32'?'Windows did not provide a system-audio track. Check your sound output device and reopen Call Note.':'macOS did not provide a system-audio track. Check Screen & System Audio Recording permission and reopen Call Note.');
     }
     await refreshCalendarPreservingDraft();
     this.socket=new WebSocket(location.origin.replace('http:','ws:')+'/api/record');
