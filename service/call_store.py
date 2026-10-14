@@ -144,6 +144,18 @@ class CallStore:
         with self.connect() as db:
             db.execute("UPDATE calls SET archived=1 WHERE id=?", (call_id,))
 
+    def delete(self, call_id):
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            call = db.execute("SELECT status FROM calls WHERE id=? AND archived=0", (call_id,)).fetchone()
+            if call is None:
+                raise KeyError("Call not found")
+            if call['status'] == 'recording':
+                raise ValueError("Stop and save the call before deleting it.")
+            db.execute("DELETE FROM analyses WHERE call_id=?", (call_id,))
+            db.execute("DELETE FROM segments WHERE call_id=?", (call_id,))
+            db.execute("DELETE FROM calls WHERE id=?", (call_id,))
+
     def save_analysis(self, call_id, markdown, author):
         self.get(call_id)
         if not markdown.strip() or len(markdown) > 100000:

@@ -1,0 +1,2 @@
+# Windows x64 CPU runtime; the shared lock excludes Apple-only MLX packages.
+-r requirements.txt

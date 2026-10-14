@@ -1,5 +1,5 @@
 const {app, BrowserWindow, session, desktopCapturer, ipcMain, dialog, systemPreferences, safeStorage, shell, Menu, nativeTheme, clipboard} = require('electron');
-const {spawn} = require('node:child_process');
+const {ServiceSupervisor} = require('./service-supervisor.cjs');
 const {randomBytes} = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -13,7 +13,9 @@ let origin;
 const bundled = app.isPackaged && fs.existsSync(path.join(process.resourcesPath, 'service'));
 const root = bundled ? path.join(process.resourcesPath, 'service') : path.resolve(__dirname, '..');
 const serviceRoot = bundled ? root : path.join(root, 'service');
-const python = bundled ? path.join(process.resourcesPath, 'python/bin/python3.13') : path.join(root, '.venv/bin/python');
+const {runtimePython}=require('./platform.cjs');
+const python = runtimePython({platform:process.platform,bundled,resources:process.resourcesPath,root});
+if(process.platform==='win32')app.setAppUserModelId('local.calldesk.preview');
 if (!app.requestSingleInstanceLock()) app.quit();
 function showWindow(){window?.show();window?.focus();}
 app.on('second-instance', showWindow);
@@ -31,7 +33,7 @@ app.whenReady().then(async () => {
   const {registerSettings}=require('./settings.cjs');
   const {buildMcpSetup}=require('./mcp-setup.cjs');
   const settings=registerSettings({ipcMain,trusted,theme,getReminders:()=>reminders,exportDiagnostics,
-    getMcpSetup:()=>buildMcpSetup({python,server:path.join(serviceRoot,'call_mcp.py'),home:app.getPath('home')}),
+    getMcpSetup:()=>buildMcpSetup({python,server:path.join(serviceRoot,'call_mcp.py'),home:app.getPath('home'),platform:process.platform,appData:app.getPath('appData')}),
     openExternal:url=>shell.openExternal(url),notify:state=>{
       for(const source of ['system','light','dark']){const item=Menu.getApplicationMenu()?.getMenuItemById('appearance-'+source);if(item)item.checked=state.appearance===source;}
       if(window&&!window.isDestroyed())window.webContents.send('settings:changed',state);
@@ -54,7 +56,7 @@ app.whenReady().then(async () => {
     }
   }));
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    {label:'Call Note',submenu:[{role:'about'},{label:'Settings…',accelerator:'CmdOrCtrl+,',click:openSettings},{label:'Check for Updates…',click:openUpdates},{type:'separator'},{role:'services'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{role:'quit'}]},
+    {label:'Call Note',submenu:[{role:'about'},{label:'Settings…',accelerator:'CmdOrCtrl+,',click:openSettings},{label:'Check for Updates…',click:openUpdates},{type:'separator'},...(process.platform==='darwin'?[{role:'services'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'}]:[]),{role:'quit'}]},
     {role:'editMenu'},{label:'View',submenu:[{role:'reload'},{role:'forceReload'},{role:'toggleDevTools'},{type:'separator'},{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{type:'separator'},{role:'togglefullscreen'},{type:'separator'},{label:'Appearance',submenu:appearanceItems}]},{role:'windowMenu'},{role:'help',submenu:[{label:'Quick Tour',click:()=>openIntroduction('tour')},{label:"What's New",click:()=>openIntroduction('news')},{type:'separator'},{label:'Export Diagnostics…',click:exportDiagnostics},{label:'Downloads & Release Notes',click:openReleases}]}
   ]));
 
@@ -74,9 +76,11 @@ app.whenReady().then(async () => {
     return result;
   });
   fs.mkdirSync(data, {recursive:true, mode:0o700});
-  const {MacUpdater} = require('electron-updater');
-  const {Updates} = require('./updates.cjs');
-  updates = new Updates({updater:new MacUpdater(), nativeUpdater:require('electron').autoUpdater, enabled:app.isPackaged && process.platform==='darwin', isRecording:()=>recording,
+  const {MacUpdater,NsisUpdater} = require('electron-updater');
+  const {Updates,updateAvailability} = require('./updates.cjs');
+  const updater=process.platform==='win32'?new NsisUpdater():new MacUpdater();
+  const updatePolicy=await updateAvailability({platform:process.platform,packaged:app.isPackaged,preview:require('./package.json').callNoteWindowsPreview===true,readConfig:()=>updater.configOnDisk.value});
+  updates = new Updates({updater, nativeUpdater:require('electron').autoUpdater, platform:process.platform, ...updatePolicy, isRecording:()=>recording,
     onError:error=>diagnostics.record('updater',error),
     notify:state=>window?.webContents.send('updates:state',state)});
   for (const action of ['status','check','install']) ipcMain.handle('updates:'+action, (event, value)=>{if(!trusted(event))throw Error('Untrusted window');return updates[action](value);});
@@ -84,11 +88,13 @@ app.whenReady().then(async () => {
   const environment = {...process.env, CALL_DESK_TOKEN:token, CALL_DESK_DATA:data, PYTHONNOUSERSITE:'1', PYTHONDONTWRITEBYTECODE:'1', HF_HOME:path.join(data,'cache/huggingface'), FERMION_CACHE_DIR:path.join(data,'cache/fermion')};
   delete environment.PYTHONPATH; delete environment.PYTHONHOME;
   if (bundled) {environment.CALL_NOTE_MODEL=path.join(root,'models/model_phonon2_c4c_int6'); environment.HF_HUB_OFFLINE='1';}
-  service = spawn(python, ['-m', 'uvicorn', 'call_app:app', '--host', '127.0.0.1', '--port', String(port), '--ws-max-size', '65536'], {
-    cwd:serviceRoot, env:environment, stdio:['ignore', log, log]
+  service = new ServiceSupervisor({command:python,
+    args:['-B',path.join(serviceRoot,'run_service.py'),'--host','127.0.0.1','--port',String(port)],
+    options:{cwd:serviceRoot,env:environment,stdio:['ignore',log,log],windowsHide:true},
+    onRecycle:()=>fs.writeSync(log,'Call Note: restarting idle service to release speech model memory.\n'),
+    onError:error=>{diagnostics.record('service',error);dialog.showErrorBox('Call Note service stopped',`${error.message} See ${path.join(data,'service.log')}`);}
   });
-  service.on('error', error => {diagnostics.record('service',error);dialog.showErrorBox('Call Note service failed', error.message);});
-  service.on('exit', code => { if (!quitting) {diagnostics.record('service',{name:'Error',message:'Service exited'});dialog.showErrorBox('Call Note service stopped', `Exit ${code}. See ${path.join(data, 'service.log')}`);} });
+  service.start();
   session.defaultSession.setPermissionCheckHandler((contents, permission, requestingOrigin) => contents === window?.webContents && requestingOrigin === origin && ['media', 'display-capture'].includes(permission));
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(contents === window?.webContents && contents.getURL().startsWith(origin + '/') && ['media', 'display-capture'].includes(permission)));
   session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
@@ -144,12 +150,12 @@ app.whenReady().then(async () => {
   updates.start();
   reminders.start();
 });
-require('electron').autoUpdater.on('before-quit-for-update',()=>{quitting=true;service?.kill('SIGTERM');});
+require('electron').autoUpdater.on('before-quit-for-update',()=>{quitting=true;service?.stop();});
 app.on('window-all-closed', () => app.quit());
 app.on('before-quit', event => {
   if(recording&&!quitting){
     const choice=dialog.showMessageBoxSync(window,{type:'question',buttons:['Keep recording','Quit and end call'],defaultId:0,cancelId:0,message:'A call is being transcribed.',detail:'Quitting saves finalized text and marks the call interrupted.'});
     if(choice===0){event.preventDefault();return;}
   }
-  quitting=true;reminders?.stop();service?.kill('SIGTERM');
+  quitting=true;reminders?.stop();service?.stop();
 });

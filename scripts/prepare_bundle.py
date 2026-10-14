@@ -11,6 +11,27 @@ BUILD=ROOT/'.build'
 BUNDLE=BUILD/'bundle'
 PYTHON_VERSION='3.13.16'
 
+def prepare_service(*, architecture, platform):
+    service=BUNDLE/'service'
+    if service.exists():shutil.rmtree(service)
+    service.mkdir()
+    for name in ['app.py','call_app.py','call_store.py','call_mcp.py','streaming.py','connect_mcp.py','diarization.py','run_service.py']:
+        shutil.copy2(ROOT/'service'/name,service/name)
+    for name in ['static','desktop/ui','desktop/licenses']:
+        shutil.copytree(ROOT/name,service/name)
+    (service/'samples').mkdir()
+    for name in ['long-clean.wav','long-expected.txt','meeting.wav','meeting-script.json']:
+        shutil.copy2(ROOT/'samples'/name,service/'samples'/name)
+    model=ROOT/'.cache/fermion/speech/FermionResearch__Phonon-2/model_phonon2_c4c_int6'
+    shutil.copytree(model,service/'models'/model.name)
+    (service/'models/diarization').mkdir()
+    for name in ['segmentation.onnx','embedding.onnx']:
+        shutil.copy2(ROOT/'models/diarization'/name, service/'models/diarization'/name)
+    shutil.copy2(ROOT/'requirements.txt',service/'requirements.txt')
+    manifest={'python':PYTHON_VERSION,'model_sha256':hashlib.sha256((model/'model.fermion').read_bytes()).hexdigest(),'architecture':architecture,'platform':platform,'model_license':'CC-BY-4.0','runtime_license':'Apache-2.0'}
+    (service/'bundle.json').write_text(json.dumps(manifest,indent=2)+'\n')
+
+
 def main():
     if sys.version_info[:2] != (3, 13):raise SystemExit('Build with the Python 3.13 project environment.')
     if sys.platform!='darwin':raise SystemExit('Build the macOS release on a Mac.')
@@ -24,24 +45,7 @@ def main():
     source=ROOT/'.venv/lib/python3.13/site-packages'
     packages=target/'lib/python3.13/site-packages'
     shutil.copytree(source,packages,dirs_exist_ok=True,symlinks=False,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
-    service=BUNDLE/'service'
-    if service.exists():shutil.rmtree(service)
-    service.mkdir()
-    for name in ['app.py','call_app.py','call_store.py','call_mcp.py','streaming.py','connect_mcp.py','diarization.py']:
-        shutil.copy2(ROOT/'service'/name,service/name)
-    for name in ['static','desktop/ui','desktop/licenses']:
-        shutil.copytree(ROOT/name,service/name)
-    (service/'samples').mkdir()
-    for name in ['long-clean.wav','long-expected.txt','meeting.wav','meeting-script.json']:
-        shutil.copy2(ROOT/'samples'/name,service/'samples'/name)
-    model=ROOT/'.cache/fermion/speech/FermionResearch__Phonon-2/model_phonon2_c4c_int6'
-    shutil.copytree(model,service/'models'/model.name)
-    (service/'models/diarization').mkdir()
-    for name in ['segmentation.onnx','embedding.onnx']:
-        shutil.copy2(ROOT/'models/diarization'/name, service/'models/diarization'/name)
-    shutil.copy2(ROOT/'requirements.txt',service/'requirements.txt')
-    manifest={'python':PYTHON_VERSION,'model_sha256':hashlib.sha256((model/'model.fermion').read_bytes()).hexdigest(),'architecture':'arm64','model_license':'CC-BY-4.0','runtime_license':'Apache-2.0'}
-    (service/'bundle.json').write_text(json.dumps(manifest,indent=2)+'\n')
+    prepare_service(architecture="arm64", platform="darwin")
     # Check native linkage: a release must not require this machine's Homebrew.
     external=[]
     for path in target.rglob('*'):

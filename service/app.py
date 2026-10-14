@@ -6,8 +6,11 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 import logging
+import gc
+import sys
 import json
 import os
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -33,7 +36,6 @@ SAMPLES = {
 }
 os.environ.setdefault("HF_HOME", str(ROOT / ".cache/huggingface"))
 os.environ.setdefault("FERMION_CACHE_DIR", str(ROOT / ".cache/fermion"))
-os.environ["FERMION_DEVICE"] = "mlx"
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 logger = logging.getLogger("phonon-poc")
 
@@ -42,27 +44,59 @@ class Engine:
     def __init__(self):
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="phonon")
         self.model = None
-        self.status = "loading"
+        self.backend = None
+        self.status = "idle"
         self.error = None
         self.info = {}
         self.load_seconds = None
         self.busy = False
 
+    def ensure_loaded(self):
+        if self.status != "ready" or self.model is None:
+            self.load()
+        if self.status != "ready":
+            raise RuntimeError(self.error or "Speech model could not be loaded.")
+        return self.model
+
+    def unload(self):
+        """Call on the inference worker after active recording jobs finish."""
+        self.model = None
+        self.info = {}
+        self.backend = None
+        self.load_seconds = None
+        self.error = None
+        self.status = "idle"
+        gc.collect()
+        mx = sys.modules.get("mlx.core")
+        if mx is not None:
+            try:
+                mx.clear_cache()
+            except Exception:
+                logger.exception("Could not clear the Metal cache")
+
     def load(self):
+        self.status = "loading"
+        self.error = None
         started = time.perf_counter()
         try:
             import fermion
-            import mlx.core as mx
+            from fermion._speech.backends import resolve
 
+            self.backend = resolve("Call Note speech transcription")
             self.model = fermion.load_speech(os.environ.get("CALL_NOTE_MODEL", "phonon-2"), quiet=False)
             self.info = self.model.describe()
-            self.info["device"] = mx.device_info()
+            if self.backend == "mlx":
+                import mlx.core as mx
+                self.info["device"] = mx.device_info()
+            else:
+                self.info["device"] = {"type": "cpu", "platform": platform.system(), "architecture": platform.machine()}
             from fermion._speech.live import warm_up
             self.info["warmup_seconds"] = warm_up(self.model)
             self.load_seconds = time.perf_counter() - started
             self.status = "ready"
         except (Exception, SystemExit) as exc:
             logger.exception("Model startup failed")
+            self.unload()
             self.error = str(exc)
             self.status = "error"
 
@@ -72,7 +106,7 @@ class Engine:
         result = asdict(self.model.transcribe_detailed(str(source), hotwords=hotwords))
         processing = time.perf_counter() - started
         duration = result["audio_seconds"]
-        result.update(model="phonon-2", backend="mlx", processing_seconds=processing,
+        result.update(model="phonon-2", backend=self.backend, processing_seconds=processing,
                       conversion_seconds=0, model_load_seconds=self.load_seconds,
                       realtime_factor=processing / duration, speed_x=duration / processing)
         return result
@@ -108,7 +142,7 @@ class Engine:
                 raise HTTPException(422, str(exc)) from exc
             processing = time.perf_counter() - started
             result.update(
-                model="phonon-2", backend="mlx", processing_seconds=processing,
+                model="phonon-2", backend=self.backend, processing_seconds=processing,
                 conversion_seconds=conversion_seconds, model_load_seconds=self.load_seconds,
                 realtime_factor=processing / duration, speed_x=duration / processing,
             )
@@ -160,7 +194,7 @@ def index():
 @app.get("/api/status")
 def status():
     return dict(status=engine.status, error=engine.error, busy=engine.busy,
-                model="phonon-2", backend="mlx", load_seconds=engine.load_seconds,
+                model="phonon-2", backend=engine.backend, load_seconds=engine.load_seconds,
                 engine=engine.info, max_bytes=MAX_BYTES, max_seconds=MAX_SECONDS)
 
 

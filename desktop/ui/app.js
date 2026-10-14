@@ -1,8 +1,9 @@
 import {setupIntroduction} from './introduction.js';
 import {setupSettings} from './settings.js';
+import {setupDeleteCall} from './delete-call.js';
 const $ = id => document.getElementById(id);
 const session = await window.callDesk.session();
-let calendarEvents=[], selectedEvent=null, settings;
+let calendarEvents=[], selectedEvent=null, settings, deletion;
 let sampleRunning = false, introduction;
 let current, capture, ready = false, searchTimer, timer, libraryOffset = 0;
 const sampleKinds = {sample:'briefing', 'sample-multiparty':'meeting'};
@@ -29,7 +30,7 @@ function segment(row) {
 }
 function show(call) {
   if ($('notice').dataset.kind==='sample') notice();
-  current=call;
+  current=call;deletion?.render();
   const meeting=call.calendar_event; $('meeting-details').hidden=!meeting; $('meeting-details').textContent=meeting?`${new Date(meeting.start).toLocaleString()} · ${(meeting.attendees||[]).map(a=>a.name||a.email).join(', ')}${meeting.meeting_url?' · '+meeting.meeting_url:''}`:'';
   $('heading').textContent=call.title; $('setup').hidden=true;
   $('transcript').replaceChildren(...call.segments.map(segment));
@@ -42,18 +43,25 @@ function show(call) {
   if(sampleKinds[call.source]&&call.segments.length&&!call.segments.some(row=>row.speaker)) notice('No speaker labels were saved for this sample. Choose New call → Try sample to run speaker detection again.', 'sample');
   loadSampleAudio(call).catch(error=>{if(current?.id===call.id)notice(error.message);});
 }
+function clearSampleAudio() {
+  const player=$('sample-audio');player.pause();player.removeAttribute('src');player.load();player.hidden=true;
+  for(const pending of sampleAudio.values())pending.then(url=>URL.revokeObjectURL(url),()=>{});
+  sampleAudio.clear();
+}
 async function loadSampleAudio(call) {
   const player=$('sample-audio'), kind=sampleKinds[call.source];
   if (player.dataset.callId!==call.id) {player.pause();player.hidden=true;player.dataset.callId=call.id;}
-  if (!kind) {player.hidden=true;return;}
+  if (!kind) {clearSampleAudio();return;}
   if (!sampleAudio.has(kind)) {
-    sampleAudio.set(kind,fetch(`/api/demo/audio?sample=${kind}`,{headers:{'x-call-token':session.token}}).then(async response=>{
+    clearSampleAudio();
+    const pending=fetch(`/api/demo/audio?sample=${kind}`,{headers:{'x-call-token':session.token}}).then(async response=>{
       if (!response.ok) throw Error('Could not load sample audio.');
       return URL.createObjectURL(await response.blob());
-    }).catch(error=>{sampleAudio.delete(kind);throw error;}));
+    }).catch(error=>{if(sampleAudio.get(kind)===pending)sampleAudio.delete(kind);throw error;});
+    sampleAudio.set(kind,pending);
   }
-  const url=await sampleAudio.get(kind);
-  if (current?.id!==call.id) return;
+  const pending=sampleAudio.get(kind),url=await pending;
+  if (current?.id!==call.id||sampleAudio.get(kind)!==pending) return;
   if (player.src!==url) player.src=url;
   player.hidden=false;
 }
@@ -70,21 +78,24 @@ async function library(append=false) {
   libraryOffset+=rows.length;$('more').hidden=rows.length<50;
 }
 async function status() {
-  try {const state=await api('/status');window.callDesk.menuState({engine:state.status,busy:state.busy});ready=state.status==='ready'&&!state.busy;$('engine').textContent=state.status==='error'?'Engine unavailable':state.status==='ready'?'● Phonon-2 ready':'Loading Phonon-2…';$('start').disabled=!ready||!!capture;$('demo').disabled=!ready||!!capture;if(state.error)notice(state.error);} catch {$('engine').textContent='Service unavailable';window.callDesk.menuState({engine:'error'});}
+  try {const state=await api('/status');window.callDesk.menuState({engine:state.status,busy:state.busy});ready=['idle','ready'].includes(state.status)&&!state.busy;$('engine').textContent=state.status==='error'?'Engine unavailable':state.status==='ready'?'● Phonon-2 ready':state.status==='idle'?'Speech model resting · loads when you start':'Loading Phonon-2…';$('start').disabled=!ready||!!capture;$('demo').disabled=!ready||!!capture;if(state.error)notice(state.error);} catch {$('engine').textContent='Service unavailable';window.callDesk.menuState({engine:'error'});}
 }
 class Capture {
   constructor() {this.streams=[];this.nodes=[];this.contexts=[];this.stopping=false;this.active=false;this.partial={};this.meters={};}
   async start() {
     if (!$('mic').checked&&!$('system').checked) throw Error('Choose at least one audio source.');
+    $('engine').textContent='Preparing speech model…';
+    await api('/engine/prepare',{method:'POST'});
     if ($('mic').checked) {
-      if (!await window.callDesk.microphone()) throw Error('Microphone access is denied. Enable Call Note in System Settings → Privacy & Security → Microphone, then reopen the app.');
-      this.streams.push({name:'microphone',stream:await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:$('noise').checked,autoGainControl:true},video:false})});
+      if (!await window.callDesk.microphone()) throw Error(session.platform==='win32'?'Microphone access is denied. In Windows Settings → Privacy & security → Microphone, allow microphone access for desktop apps, then reopen Call Note.':'Microphone access is denied. Enable Call Note in System Settings → Privacy & Security → Microphone, then reopen the app.');
+      try {this.streams.push({name:'microphone',stream:await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:$('noise').checked,autoGainControl:true},video:false})});}
+      catch(error) {if(session.platform==='win32'&&error.name==='NotAllowedError')throw Error('Microphone access is denied. In Windows Settings → Privacy & security → Microphone, allow microphone access for desktop apps, then reopen Call Note.');throw error;}
     }
     if ($('system').checked) {
       let stream;
-      try {stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:{width:320,height:180,frameRate:1}});} catch {throw Error('System-audio capture was not allowed. Enable Call Note in macOS Privacy & Security → Screen & System Audio Recording, then reopen the app. You can also start with microphone only.');}
+      try {stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:{width:320,height:180,frameRate:1}});} catch {throw Error(session.platform==='win32'?'System-audio capture was not allowed. Check your Windows sound output device and try again. You can also start with microphone only.':'System-audio capture was not allowed. Enable Call Note in macOS Privacy & Security → Screen & System Audio Recording, then reopen the app. You can also start with microphone only.');}
       this.streams.push({name:'system',stream});
-      if (!stream.getAudioTracks().length) throw Error('macOS did not provide a system-audio track. Check Screen & System Audio Recording permission and reopen Call Note.');
+      if (!stream.getAudioTracks().length) throw Error(session.platform==='win32'?'Windows did not provide a system-audio track. Check your sound output device and reopen Call Note.':'macOS did not provide a system-audio track. Check Screen & System Audio Recording permission and reopen Call Note.');
     }
     try {await refreshCalendar();} catch(error) {notice('Calendar could not refresh: '+error.message);}
     this.socket=new WebSocket(location.origin.replace('http:','ws:')+'/api/record');
@@ -121,7 +132,7 @@ class Capture {
       source.stream.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>{if(!this.stopping){notice(`${labels[source.name]} audio capture ended. The call has been stopped.`);finish(true);}}));
     }
     this.active=true;this.started=Date.now();window.callDesk.recording(true);window.callDesk.menuState({phase:'recording',seconds:0,microphone:this.streams.some(s=>s.name==='microphone'),system:this.streams.some(s=>s.name==='system')});$('setup').hidden=true;$('active').hidden=false;
-    timer=setInterval(()=>{window.callDesk.menuState({phase:this.stopping?'saving':'recording',seconds:Math.floor((Date.now()-this.started)/1000)}); $('elapsed').textContent=clock((Date.now()-this.started)/1000); const system=this.meters.system;if(system&&!system.heard&&Date.now()-system.lastSignal>15000){notice('No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check macOS recording permission.');system.lastSignal=Date.now()+45000;} },1000);
+    timer=setInterval(()=>{window.callDesk.menuState({phase:this.stopping?'saving':'recording',seconds:Math.floor((Date.now()-this.started)/1000)}); $('elapsed').textContent=clock((Date.now()-this.started)/1000); const system=this.meters.system;if(system&&!system.heard&&Date.now()-system.lastSignal>15000){notice(session.platform==='win32'?'No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check your Windows sound output device.':'No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check macOS recording permission.');system.lastSignal=Date.now()+45000;} },1000);
   }
   renderPartials() { $('partials').replaceChildren(...Object.entries(this.partial).map(([source,text])=>{const p=document.createElement('div');p.className='partial';p.textContent=`${labels[source]}: ${text}`;return p;})); }
   async stop(graceful=true) {
@@ -133,16 +144,24 @@ class Capture {
       }
     } finally {this.release();}
   }
-  release() {this.stopping=true;this.active=false;clearInterval(timer);this.streams.forEach(({stream})=>stream.getTracks().forEach(t=>t.stop()));this.nodes.forEach(n=>n.disconnect());this.contexts.forEach(c=>c.close());this.socket?.close();window.callDesk.recording(false);$('partials').replaceChildren();$('active').hidden=true;}
+  release() {
+    this.stopping=true;this.active=false;clearInterval(timer);
+    for(const {stream} of this.streams)for(const track of stream.getTracks())track.stop();
+    for(const node of this.nodes){node.port.onmessage=null;node.port.close();node.flushed=null;node.disconnect();}
+    for(const context of this.contexts)context.close().catch(reportError);
+    if(this.socket){this.socket.onmessage=this.socket.onopen=this.socket.onerror=this.socket.onclose=null;this.socket.close();}
+    this.streams=[];this.nodes=[];this.contexts=[];this.socket=null;this.meters={};this.partial={};this.completed=this.failed=null;
+    window.callDesk.recording(false);$('partials').replaceChildren();$('levels').replaceChildren();$('active').hidden=true;
+  }
 }
 async function finish(graceful=true) {
   if(!capture||capture.stopping)return;
   const recording=capture;window.callDesk.menuState({phase:'saving'});notice();$('stop').disabled=true;$('stop').textContent='Saving…';
-  try {await recording.stop(graceful);} catch(error){notice(error.message);} finally {capture=null;$('stop').disabled=false;$('stop').textContent='■ Stop & save';await library();await status();if(current)show(await api('/calls/'+current.id));}
+  try {await recording.stop(graceful);} catch(error){notice(error.message);} finally {capture=null;deletion?.render();$('stop').disabled=false;$('stop').textContent='■ Stop & save';await library();await status();if(current)show(await api('/calls/'+current.id));}
 }
-$('start').onclick=handle(async()=> {notice();$('start').disabled=true;capture=new Capture();introduction?.suspend();window.callDesk.recording(true);try{await capture.start();await library();}catch(error){capture.release();capture=null;await status();throw error;}});
+$('start').onclick=handle(async()=> {notice();$('start').disabled=true;capture=new Capture();deletion?.render();introduction?.suspend();window.callDesk.recording(true);try{await capture.start();await library();}catch(error){capture.release();capture=null;deletion?.render();await status();throw error;}});
 $('stop').onclick=handle(()=>finish());
-$('new').onclick=()=>{if(capture){notice('Stop the current call before starting another.');return;}current=null;$('sample-audio').pause();$('sample-audio').hidden=true;$('transcript').replaceChildren();$('segment-count').textContent='0';$('notes').value='';$('notes').disabled=true;$('save-notes').disabled=true;$('export').disabled=true;$('prompt').disabled=true;$('analyses').replaceChildren();$('meeting-details').hidden=true;$('call-status').textContent='';notice();$('title').value='';selectedEvent=null;handle(refreshCalendar)();$('setup').hidden=false;$('heading').textContent='Ready when you are.';$('title').focus();};
+$('new').onclick=()=>{if(capture){notice('Stop the current call before starting another.');return;}current=null;deletion?.render();clearSampleAudio();$('transcript').replaceChildren();$('segment-count').textContent='0';$('notes').value='';$('notes').disabled=true;$('save-notes').disabled=true;$('export').disabled=true;$('prompt').disabled=true;$('analyses').replaceChildren();$('meeting-details').hidden=true;$('call-status').textContent='';notice();$('title').value='';selectedEvent=null;handle(refreshCalendar)();$('setup').hidden=false;$('heading').textContent='Ready when you are.';$('title').focus();};
 $('demo').onclick=handle(async()=>{const kind=$('sample-kind').value;sampleRunning=true;notice('Detecting speakers and transcribing the sample locally…');$('demo').disabled=true;try{show(await api(`/demo?sample=${kind}`,{method:'POST'}));const speakers=new Set(current.segments.map(row=>row.speaker).filter(Boolean)).size;notice(speakers?`Sample saved · ${speakers} ${speakers===1?'speaker':'speakers'} detected. Press play above the transcript to listen.`:'Sample saved, but no reliable speaker labels were detected. Use the player above the transcript to listen, or choose New call → Try sample to try again.', 'sample');await library();}finally{sampleRunning=false;await status();}});
 $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(handle(()=>library()),200);};
 $('more').onclick=handle(()=>library(true));
@@ -153,6 +172,8 @@ window.addEventListener('focus',handle(async()=>{if(current&&!capture){const not
 
 window.callDesk.onMenuStart(()=>{if(capture||!ready){window.callDesk.menuState({phase:capture?'recording':'idle'});return;}$('new').click();$('start').click();});
 window.callDesk.onMenuStop(handle(()=>finish()));
+
+deletion = setupDeleteCall({getCurrent:()=>current,isRecording:()=>!!capture,remove:id=>api('/calls/'+encodeURIComponent(id),{method:'DELETE'}),onDeleted:async id=>{if(current?.id===id)$('new').click();await library();notice('Call deleted.');},onError:error=>{reportError(error);notice(error.message);}});
 
 settings = setupSettings({bridge:window.callDesk, version:session.version, refreshCalendar, openUpdates, beforeOpen:()=>{introduction?.suspend();$('update-dialog').close();}, onError:reportError});
 
@@ -181,6 +202,7 @@ setInterval(()=>{if(!capture&&$('setup').hidden===false)handle(refreshCalendar)(
 
 
 function renderUpdate(state) {
+  $('update-description').textContent=state.enabled?'Checks run automatically every four hours. Stable updates download in the background and install when you quit. Test releases are available through View downloads.':'Use View downloads for available installers. This build does not download or install updates automatically.';
   $('update-status').textContent=state.message;
   $('app-version').textContent=`v${session.version}${state.phase==='ready'?' · Update installs on quit':''}`;
   $('update-install').hidden=state.phase!=='ready';

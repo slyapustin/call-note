@@ -29,7 +29,7 @@ test('TOML and JSON parse to original paths containing spaces, quotes, backslash
     assert.deepEqual(JSON.parse(setup.clients[1].snippet), {mcpServers:{'call-note':{command:python, args:['-B', server]}}});
     return {snippet:setup.clients[0].snippet, expected:{mcp_servers:{'call-note':{command:python, args:['-B', server]}}}};
   });
-  const python = path.resolve(__dirname, '../.venv/bin/python');
+  const python = path.resolve(__dirname, process.platform==='win32'?'../.venv/Scripts/python.exe':'../.venv/bin/python');
   const program = 'import json,sys,tomllib\nfor case in json.load(sys.stdin):\n assert tomllib.loads(case["snippet"]) == case["expected"]\nprint("valid")';
   assert.equal(execFileSync(python, ['-B', '-c', program], {input:JSON.stringify(cases), encoding:'utf8'}).trim(), 'valid');
 });
@@ -49,4 +49,14 @@ test('invalid path values cannot produce misleading or invalid snippets', () => 
       assert.throws(() => buildMcpSetup({...options, [key]:value}), /Invalid MCP setup path/);
     }
   }
+});
+
+test('Windows setup uses roaming AppData and preserves escaped executable paths',()=>{
+  const python=String.raw`C:\Program Files\Call Note\resources\python\python.exe`;
+  const server=String.raw`C:\Program Files\Call Note\resources\service\call_mcp.py`;
+  const setup=buildMcpSetup({python,server,home:String.raw`C:\Users\Jane`,platform:'win32',appData:String.raw`D:\Roaming Profile`});
+  assert.equal(setup.clients[0].configPath,String.raw`C:\Users\Jane\.codex\config.toml`);
+  assert.equal(setup.clients[1].configPath,String.raw`D:\Roaming Profile\Claude\claude_desktop_config.json`);
+  assert.deepEqual(JSON.parse(setup.clients[1].snippet).mcpServers['call-note'],{command:python,args:['-B',server]});
+  assert.match(setup.clients[0].snippet,/C:\\\\Program Files/);
 });

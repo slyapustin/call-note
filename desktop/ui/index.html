@@ -1,12 +1,13 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Call Note</title><link rel="stylesheet" href="/ui/style.css"><link rel="stylesheet" href="/ui/introduction.css"><link rel="stylesheet" href="/ui/settings.css"></head>
-<body><aside><div class="brand"><img class="brandmark" src="/ui/icon.png" alt=""> Call Note</div><button id="new" class="primary">＋ New call</button><label class="search"><span>⌕</span><input id="search" placeholder="Search your calls" aria-label="Search calls"></label><div class="eyebrow">CALL LIBRARY</div><nav id="library" aria-label="Saved calls"></nav><button id="more" hidden>Load more</button><div class="aside-bottom"><span class="dot"></span> Stored on this Mac<br><small>Phonon-2 · English · on-device</small><br><small id="app-version"></small><button id="settings-open">Settings…</button></div></aside>
+<body><aside><div class="brand"><img class="brandmark" src="/ui/icon.png" alt=""> Call Note</div><button id="new" class="primary">＋ New call</button><label class="search"><span>⌕</span><input id="search" placeholder="Search your calls" aria-label="Search calls"></label><div class="eyebrow">CALL LIBRARY</div><nav id="library" aria-label="Saved calls"></nav><button id="more" hidden>Load more</button><div class="aside-bottom"><span class="dot"></span> Stored on this device<br><small>Phonon-2 · English · on-device</small><br><small id="app-version"></small><button id="settings-open">Settings…</button></div></aside>
 <main><header><div><div class="eyebrow">YOUR CONVERSATIONS, REMEMBERED</div><h1 id="heading">Ready when you are.</h1></div><span id="engine" class="badge">Loading model…</span></header>
 <p id="meeting-details" class="hint" hidden></p><div id="notice" role="status" hidden></div>
 <section id="setup" class="card"><div class="section-heading"><div><h2>A little less note-taking.</h2><p>Capture both sides of a call. Keep the conversation flowing.</p></div><span class="wave">▂ ▄ ▇ ▅ ▂ ▆ ▃</span></div><div class="calendar-row"><span id="calendar-status" class="hint">Use meeting details automatically</span><button id="calendar-manage">Calendar settings…</button></div><label id="calendar-picker" class="field" hidden>Scheduled meeting<select id="calendar-events"><option value="">No linked meeting</option></select></label><label class="field">Call title<input id="title" placeholder="e.g. Product sync with Alex" maxlength="200"></label><div class="capture-options"><label><input id="mic" type="checkbox" checked> My microphone <span>You</span></label><label><input id="system" type="checkbox" checked> System audio <span>Others</span></label><label><input id="noise" type="checkbox" checked> Reduce microphone noise</label></div><p class="hint">System audio includes all playing apps. Use headphones to avoid capturing voices twice. Audio is processed in memory; only text is saved.</p><div class="actions"><button id="start" class="primary" disabled>● Start call</button><label class="sample-picker">Sample<select id="sample-kind"><option value="meeting">Team discussion · 3 voices</option><option value="briefing">Project briefing · 1 voice</option></select></label><button id="demo">Try sample</button><span class="hint">Manual start · no automatic recording</span></div></section>
 <section id="active" class="card" hidden><div class="actions"><span class="live-dot"></span><strong>Transcribing live</strong><span id="elapsed">00:00</span><button id="stop" class="danger">■ Stop & save</button></div><div id="levels"></div><p class="hint">You = microphone · Speaker numbers identify voices in system audio. Labels appear after each phrase and may be imperfect.</p></section>
-<div class="content-grid"><section class="card transcript-card"><div class="section-heading"><h2>Transcript <span id="segment-count" class="count">0</span></h2><button id="export" disabled>Export text ↓</button></div><audio id="sample-audio" controls hidden></audio><div id="transcript"><div class="empty"><div class="empty-icon">≋</div><h3>Stay in the conversation.</h3><p>Your transcript will appear here as you speak.<br>Start a call or try the sample to explore.</p></div></div><div id="partials" aria-live="polite"></div></section><section class="card notes-card"><h2>After the call</h2><p class="hint">Capture a thought, or ask your assistant to find decisions and next steps.</p><label class="field">Your notes<textarea id="notes" placeholder="What matters from this conversation?" disabled></textarea></label><button id="save-notes" disabled>Save notes</button><div class="divider"></div><div class="eyebrow">CONNECTED ANALYSIS</div><h3>Bring your assistant in.</h3><p class="hint">Your connected assistant can search the entire call library, read transcripts, and save an analysis here. Its normal data policies apply to text it reads.</p><button id="prompt" disabled>Copy analysis prompt ↗</button><div id="analyses"></div></section></div>
+<div class="content-grid"><section class="card transcript-card"><div class="section-heading"><h2>Transcript <span id="segment-count" class="count">0</span></h2><div><button id="export" disabled>Export text ↓</button> <button id="delete-call" class="danger" disabled>Delete call…</button></div></div><audio id="sample-audio" controls hidden></audio><div id="transcript"><div class="empty"><div class="empty-icon">≋</div><h3>Stay in the conversation.</h3><p>Your transcript will appear here as you speak.<br>Start a call or try the sample to explore.</p></div></div><div id="partials" aria-live="polite"></div></section><section class="card notes-card"><h2>After the call</h2><p class="hint">Capture a thought, or ask your assistant to find decisions and next steps.</p><label class="field">Your notes<textarea id="notes" placeholder="What matters from this conversation?" disabled></textarea></label><button id="save-notes" disabled>Save notes</button><div class="divider"></div><div class="eyebrow">CONNECTED ANALYSIS</div><h3>Bring your assistant in.</h3><p class="hint">Your connected assistant can search the entire call library, read transcripts, and save an analysis here. Its normal data policies apply to text it reads.</p><button id="prompt" disabled>Copy analysis prompt ↗</button><div id="analyses"></div></section></div>
 <footer>Local transcription. A searchable memory. <span id="call-status"></span></footer></main>
+<dialog id="delete-dialog" aria-labelledby="delete-title"><h2 id="delete-title">Delete this call?</h2><p id="delete-description">This permanently deletes the transcript, notes, and saved analyses from Call Note. This cannot be undone. Exported copies and backups are not removed.</p><p id="delete-error" role="alert" hidden></p><div class="actions"><button id="delete-cancel" autofocus>Cancel</button><button id="delete-confirm" class="danger">Delete call</button></div></dialog>
 <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
   <div class="settings-header"><h2 id="settings-title">Settings</h2><button id="settings-close" aria-label="Close Settings">Done</button></div>
   <div class="settings-layout">
@@ -18,11 +19,11 @@
     </nav>
     <div id="settings-content" class="settings-content">
       <section id="settings-general" role="tabpanel" aria-labelledby="settings-tab-general" data-settings-panel="general">
-        <h3>General</h3><div class="settings-row"><div><label for="settings-appearance">Appearance</label><p>Follow your Mac, or choose a look for Call Note.</p></div><select id="settings-appearance" disabled><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
-        <p class="settings-footnote">Changes apply immediately. Transcription and saved calls stay on this Mac.</p>
+        <h3>General</h3><div class="settings-row"><div><label for="settings-appearance">Appearance</label><p>Follow your device, or choose a look for Call Note.</p></div><select id="settings-appearance" disabled><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+        <p class="settings-footnote">Changes apply immediately. Transcription and saved calls stay on this device.</p>
       </section>
       <section id="settings-calendar" role="tabpanel" aria-labelledby="settings-tab-calendar" data-settings-panel="calendar" hidden>
-        <h3>Calendar</h3><p class="settings-description">Match meeting details and join upcoming calls from the menu bar.</p>
+        <h3>Calendar</h3><p class="settings-description">Match meeting details and join upcoming calls from the Call Note tray menu.</p>
         <div class="settings-row"><div><strong>Google Calendar</strong><p id="settings-calendar-status">Checking connection…</p></div><button id="settings-calendar-connect" disabled>Connect</button></div>
         <div id="settings-calendar-connected" class="settings-actions" hidden><button id="settings-calendar-refresh">Refresh meetings</button><button id="settings-calendar-disconnect">Disconnect</button></div>
         <div class="settings-row"><div><label for="settings-reminder">Meeting reminder</label><p>Notify you before a scheduled call.</p></div><select id="settings-reminder" disabled><option value="60">1 minute before</option><option value="30">30 seconds before</option><option value="0">Off</option></select></div>
@@ -36,7 +37,7 @@
         <label class="settings-code-label" for="settings-mcp-config">Configuration to add</label><textarea id="settings-mcp-config" class="settings-code" readonly spellcheck="false" aria-describedby="settings-mcp-copy-note"></textarea>
         <p class="settings-path">Configuration file: <code id="settings-mcp-path"></code></p>
         <div class="settings-actions"><button id="settings-mcp-copy" disabled>Copy configuration</button><button id="settings-mcp-docs" disabled>Official setup guide</button></div>
-        <p class="settings-footnote">Install Call Note in Applications before copying. If you move the app later, copy an updated configuration.</p>
+        <p class="settings-footnote">Install Call Note before copying. If you move the app later, copy an updated configuration.</p>
         <p id="settings-mcp-copy-note" class="settings-footnote">Copying does not configure the other app. Follow the steps above and preserve any existing settings.</p>
       </section>
       <section id="settings-support" role="tabpanel" aria-labelledby="settings-tab-support" data-settings-panel="support" hidden>
@@ -49,7 +50,7 @@
     </div>
   </div>
 </dialog>
-<dialog id="update-dialog"><h2>Call Note updates</h2><p id="update-status" role="status"></p><p class="hint">Checks run automatically every four hours. Stable updates download in the background and install when you quit. Test releases are available through View downloads.</p><div class="actions"><button id="update-check">Check now</button><button id="update-downloads">View downloads</button><button id="update-install" class="primary" hidden>Restart &amp; install</button><button id="update-close">Close</button></div></dialog>
+<dialog id="update-dialog"><h2>Call Note updates</h2><p id="update-status" role="status"></p><p id="update-description" class="hint">Checks run automatically every four hours. Stable updates download in the background and install when you quit. Test releases are available through View downloads.</p><div class="actions"><button id="update-check">Check now</button><button id="update-downloads">View downloads</button><button id="update-install" class="primary" hidden>Restart &amp; install</button><button id="update-close">Close</button></div></dialog>
 <dialog id="introduction" class="introduction" aria-labelledby="intro-title" aria-describedby="intro-description">
   <div class="intro-top"><span class="intro-brand"><img src="/ui/icon.png" alt="">Call Note</span><button id="intro-skip">Skip tour</button></div>
   <div class="intro-body">
@@ -62,7 +63,7 @@
       <div class="intro-voice"><b>Speaker 2</b><p>Let’s review it together on Thursday.</p></div>
     </div>
     <div class="intro-preview" data-preview="calendar" hidden>
-      <p class="intro-example-label">Example menu bar reminder</p>
+      <p class="intro-example-label">Example meeting reminder</p>
       <div class="intro-meeting"><div><strong>Product catch-up</strong><small>Starts in 1 minute</small></div><span class="intro-join">Join call</span></div>
     </div>
     <div class="intro-preview" data-preview="notes" hidden>
@@ -70,9 +71,9 @@
       <ul><li><span class="intro-check" aria-hidden="true">✓</span>Launch confirmed for Thursday</li><li><span class="intro-check" aria-hidden="true">✓</span>Alex: finish the installation guide</li><li><span class="intro-check" aria-hidden="true">✓</span>Follow up at tomorrow’s catch-up</li></ul>
     </div>
     <div class="intro-preview intro-news" data-preview="news" hidden>
-      <article><h3>Settings, together</h3><p>Open Settings from the sidebar or press ⌘, to manage appearance, Calendar, reminders, and support.</p></article>
-      <article><h3>Connect your assistant, your way</h3><p>Follow the Codex or Claude setup steps and copy the configuration. Call Note does not change your assistant’s settings.</p></article>
-      <article><h3>Help when you need it</h3><p>Find updates, release notes, and diagnostics export in Settings → Support.</p></article>
+      <article><h3>Less memory between calls</h3><p>Speech models load when needed and rest after two idle minutes. Your next call may take a moment to prepare.</p></article>
+      <article><h3>Keep the calls you need</h3><p>Use Delete call to remove a saved transcript, its notes, and analyses. You’ll be asked to confirm first.</p></article>
+      <article><h3>Your preferences, together</h3><p>Find appearance, Calendar, assistant setup, and diagnostics in Settings.</p></article>
     </div>
     <p id="intro-detail" class="intro-detail"></p>
   </div>

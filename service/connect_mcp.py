@@ -3,7 +3,7 @@
 import argparse
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import sys
 
 ROOT = Path(__file__).resolve().parent
@@ -22,10 +22,11 @@ def toml_string(value):
     return json.dumps(value, ensure_ascii=False).replace('\x7f', '\\u007f')
 
 
-def build_setup(home, python=PYTHON, server=ROOT / 'call_mcp.py'):
+def build_setup(home, python=PYTHON, server=ROOT / 'call_mcp.py', platform=sys.platform, app_data=None):
     command = setup_path(python)
     args = ['-B', setup_path(server)]
-    home = Path(setup_path(home))
+    home = (PureWindowsPath if platform == 'win32' else Path)(setup_path(home))
+    claude_directory = (PureWindowsPath(setup_path(app_data or os.environ.get('APPDATA') or home / 'AppData/Roaming')) / 'Claude' if platform == 'win32' else home / 'Library/Application Support/Claude')
     return {
         'command': command,
         'args': args,
@@ -43,7 +44,7 @@ def build_setup(home, python=PYTHON, server=ROOT / 'call_mcp.py'):
             },
             {
                 'id': 'claude', 'label': 'Claude Desktop',
-                'configPath': str(home / 'Library/Application Support/Claude/claude_desktop_config.json'),
+                'configPath': str(claude_directory / 'claude_desktop_config.json'),
                 'steps': [
                     'In the Claude Desktop menu, choose Settings → Developer → Edit Config.',
                     'If the file is empty, use the full example below. Otherwise, merge only the call-note entry into the existing mcpServers object. Preserve your other servers and settings; do not replace the entire existing file.',

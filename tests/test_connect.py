@@ -59,3 +59,14 @@ def test_cli_only_prints_instructions_without_creating_or_changing_configs(tmp_p
 def test_no_longer_exposes_an_automatic_mutation_plan():
     import connect_mcp
     assert not hasattr(connect_mcp, 'plans')
+
+
+def test_windows_setup_uses_roaming_profile_and_round_trips_paths():
+    python = r'C:\Program Files\Call Note\resources\python\python.exe'
+    server = r'C:\Program Files\Call Note\resources\service\call_mcp.py'
+    setup = build_setup(r'C:\Users\Jane', python, server, platform='win32', app_data=r'D:\Roaming Profile')
+    assert setup['clients'][0]['configPath'] == r'C:\Users\Jane\.codex\config.toml'
+    assert setup['clients'][1]['configPath'] == r'D:\Roaming Profile\Claude\claude_desktop_config.json'
+    expected = {'command': python, 'args': ['-B', server]}
+    assert tomllib.loads(setup['clients'][0]['snippet']) == {'mcp_servers': {'call-note': expected}}
+    assert json.loads(setup['clients'][1]['snippet']) == {'mcpServers': {'call-note': expected}}
