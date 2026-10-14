@@ -57,6 +57,19 @@ def verify_batch(diarizer, name, audio):
     }
 
 
+def verify_chunks(diarizer, name, audio):
+    from diarization import SpeakerSession
+
+    session = SpeakerSession(diarizer)
+    labels = []
+    for offset in range(0, len(audio), RATE * 3):
+        labels.extend(turn['speaker'] for turn in session.turns(audio[offset:offset + RATE * 3]))
+    expected = 3 if name == 'meeting' else 1
+    assert len(session.voices) == expected, f'{name}: {len(session.voices)} identities in short chunks'
+    return {'sample': name, 'window_seconds': 3, 'identities': len(session.voices),
+            'turns': len(labels), 'uncertain_turns': labels.count(None)}
+
+
 def verify_stream(diarizer, audio):
     from app import Engine
     from diarization import SpeakerSession
@@ -104,6 +117,7 @@ def main():
         "--stream", action="store_true",
         help="Also load Phonon-2 and verify speaker identity through the rolling live decoder.",
     )
+    parser.add_argument('--chunks', action='store_true', help='Verify identities across independent three-second chunks.')
     args = parser.parse_args()
     sys.path.insert(0, str(ROOT / "service"))
     from diarization import Diarizer
@@ -115,6 +129,8 @@ def main():
         verify_batch(diarizer, "meeting", meeting),
         verify_batch(diarizer, "briefing", briefing),
     ]}
+    if args.chunks:
+        report['chunks'] = [verify_chunks(diarizer, 'meeting', meeting), verify_chunks(diarizer, 'briefing', briefing)]
     if args.stream:
         report["stream"] = verify_stream(diarizer, meeting)
     print(json.dumps(report, indent=2))

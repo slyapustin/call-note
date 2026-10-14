@@ -40,8 +40,14 @@ class LiveTranscriber:
         if self.speakers is not None:
             try:
                 turns = self.speakers.transcribe(self.last_audio, self.model, self.hotwords, fallback=text)
-                for turn in turns:
-                    self.events.append({**turn, "type": "final", "start": self.audio_base + turn["start"], "end": self.audio_base + turn["end"]})
+                # Build the whole phrase before publishing any of its turns.
+                # If a later turn is malformed (or a lazy result raises), do
+                # not leave early speaker rows beside the fallback phrase.
+                events = [
+                    {**turn, "type": "final", "start": self.audio_base + turn["start"], "end": self.audio_base + turn["end"]}
+                    for turn in turns
+                ]
+                self.events.extend(events)
                 return
             except Exception:
                 self.events.append({"type": "warning", "message": "Speaker detection failed for a phrase. Its transcript is saved without a speaker label."})

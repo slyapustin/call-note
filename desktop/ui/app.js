@@ -24,7 +24,7 @@ function handle(fn) { return async (...args) => { try {await fn(...args);} catch
 function segment(row) {
   const entry = document.createElement('div'); entry.className='segment';
   const meta=document.createElement('div'); meta.className='meta';
-  const speaker=document.createElement('span'); speaker.className='speaker';if(row.speaker)speaker.classList.add(`voice-${(row.speaker-1)%4}`);speaker.textContent=row.speaker?`Speaker ${row.speaker}`:labels[row.source];
+  const speaker=document.createElement('span'); speaker.className='speaker';if(row.speaker)speaker.classList.add(`voice-${(row.speaker-1)%4}`);speaker.textContent=row.speaker?`Speaker ${row.speaker}`:row.source==='system'?'Speaker uncertain':labels[row.source];
   const time=document.createElement('span');time.textContent=clock(row.start);
   const text=document.createElement('p');text.textContent=row.text;
   meta.append(speaker,time);entry.append(meta,text);return entry;

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.12 — 2026-10-14
+
+- Reduce false speaker changes: short phrases cannot create a new speaker; ambiguous matches stay uncertain, and strong matches gradually update the voice reference.
+- Show uncertain system-audio identities as “Speaker uncertain”. Overlapping diarization regions are transcribed once with an uncertain identity.
+- Publish speaker turns atomically so a failed turn cannot leave a duplicate whole-phrase fallback.
+- Verified the bundled one-person and three-person samples, including separate three-second chunks. Existing saved speaker labels are unchanged because source audio is not retained.
+
 ## 0.2.11 — 2026-10-14
 
 - Removed desktop screen enumeration from Mac system-audio capture. Use a temporary video track of Call Note itself, discard it immediately, and keep loopback audio. Live capture validation remains pending.

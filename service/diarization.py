@@ -39,16 +39,32 @@ class SpeakerSession:
         self.diarizer = diarizer
         self.voices = []
 
-    def identify(self, vector):
-        if vector is None:
+    def identify(self, vector, duration=3.):
+        if vector is None or duration < 1.:
             return None
+        vector = np.asarray(vector, dtype=np.float32)
+        norm = np.linalg.norm(vector)
+        if vector.ndim != 1 or not np.isfinite(vector).all() or norm <= 0:
+            return None
+        vector = vector / norm
         similarities = [float(np.dot(vector, voice)) for voice in self.voices]
-        if similarities and max(similarities) >= 0.55:
-            return similarities.index(max(similarities)) + 1
-        # Bound memory even on unusually noisy, long recordings.
-        if len(self.voices) >= 32:
+        if similarities:
+            order = np.argsort(similarities)
+            best = int(order[-1])
+            score = similarities[best]
+            margin = score - similarities[int(order[-2])] if len(order) > 1 else 1.
+            if score >= 0.55 and margin >= 0.08:
+                if duration >= 2. and score >= 0.65:
+                    updated = self.voices[best] * 0.85 + vector * 0.15
+                    self.voices[best] = updated / np.linalg.norm(updated)
+                return best + 1
+            # An uncertain match is not evidence of another person.
+            if score > 0.35:
+                return None
+        # Brief replies and fillers cannot establish a new identity.
+        if duration < 2.5 or len(self.voices) >= 32:
             return None
-        self.voices.append(vector)
+        self.voices.append(vector.copy())
         return len(self.voices)
 
     def turns(self, audio):
@@ -61,15 +77,18 @@ class SpeakerSession:
         labels = {}
         for key, pieces in groups.items():
             voice_audio = np.concatenate(pieces)
-            labels[key] = self.identify(self.diarizer.embedding(voice_audio)) if len(voice_audio) >= RATE else None
+            labels[key] = self.identify(self.diarizer.embedding(voice_audio), len(voice_audio)/RATE) if len(voice_audio) >= RATE else None
+        spans = [(max(0., float(turn.start)), min(len(audio)/RATE, float(turn.end)),
+                  labels[turn.speaker]) for turn in raw]
+        boundaries = sorted({bound for start, end, _ in spans if end > start for bound in (start, end)})
         result = []
-        for turn in raw:
-            speaker = labels[turn.speaker]
-            start, end = max(0., float(turn.start)), min(len(audio)/RATE, float(turn.end))
-            if end <= start:
+        for start, end in zip(boundaries, boundaries[1:]):
+            active = {speaker for left, right, speaker in spans if left < end and right > start}
+            if not active:
                 continue
+            speaker = next(iter(active)) if len(active) == 1 else None
             if result and result[-1]['speaker'] == speaker and start - result[-1]['end'] < 0.8:
-                result[-1]['end'] = max(end, result[-1]['end'])
+                result[-1]['end'] = end
             else:
                 result.append(dict(start=start, end=end, speaker=speaker))
         return result
