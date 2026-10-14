@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.10 — 2026-10-14
 
 - Show the next call countdown in the Mac menu bar up to one hour before it starts, instead of only 15 minutes. Notification timing is unchanged.
 
