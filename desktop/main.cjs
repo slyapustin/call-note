@@ -132,8 +132,8 @@ app.whenReady().then(async () => {
   const {CallDetectionLifecycle}=require('./call-detection-lifecycle.cjs');
   callDetection=createCallDetection({helper:app.isPackaged?path.join(process.resourcesPath,'audio-activity'):path.join(root,'.build/audio-activity'),
     settingsFile:path.join(data,'call-detection.json'),Notification,dialog,ipcMain,trusted,show:showWindow,
-    getBusy:()=>recording||callTray.state.busy||callTray.state.phase!=='idle',
-    canStart:()=>!recording&&callTray.state.phase==='idle'&&['idle','ready'].includes(callTray.state.engine)&&!callTray.state.busy,
+    getBusy:()=>quitting||recording||callTray.state.busy||callTray.state.phase!=='idle',
+    canStart:()=>!quitting&&!recording&&callTray.state.phase==='idle'&&['idle','ready'].includes(callTray.state.engine)&&!callTray.state.busy,
     hasPermissions:()=>process.platform==='darwin'&&['microphone','screen'].every(kind=>systemPreferences.getMediaAccessStatus(kind)==='granted'),
     start:request=>{if(!request.automatic)showWindow();window.webContents.send('detection:start',request);},
     onChange:state=>callTray.setDetection(state)});
@@ -163,7 +163,7 @@ app.whenReady().then(async () => {
   updates.start();
   reminders.start();
 });
-require('electron').autoUpdater.on('before-quit-for-update',()=>{quitting=true;service?.stop();});
+require('electron').autoUpdater.on('before-quit-for-update',()=>{quitting=true;detectionLifecycle?.stopMonitoring();service?.stop();});
 app.on('window-all-closed', () => app.quit());
 app.on('before-quit', event => {
   if(recording&&!quitting){
