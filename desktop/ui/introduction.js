@@ -7,14 +7,14 @@ const tour = [
   },
   {
     title: 'Be ready for the next call.',
-    description: 'Connect Google Calendar to match meeting details automatically. Your next meeting and a Join call action appear in the menu bar.',
+    description: 'Connect Google Calendar in Settings to match meeting details automatically. Your next meeting and a Join call action appear in the menu bar.',
     detail: 'Choose a reminder one minute or 30 seconds before a meeting. Joining opens the meeting link; transcription still starts manually. Google sign-in currently requires an approved test account.',
     preview: 'calendar',
   },
   {
     title: 'Keep the useful parts.',
     description: 'Search past calls, add your notes, and export a transcript. Connect Codex or Claude to find decisions and next steps.',
-    detail: 'A connected assistant can read your entire call library. Text it reads is subject to that assistant’s data policies. You can explore a playable sample before your first call.',
+    detail: 'Open Settings → Assistants for setup instructions. A connected assistant can read your entire call library. Text it reads is subject to that assistant’s data policies. You can explore a playable sample before your first call.',
     preview: 'notes',
   },
 ];
@@ -27,8 +27,8 @@ export function setupIntroduction({bridge, version, canOpen, onError}) {
   function render() {
     const isTour = kind === 'tour';
     get('eyebrow').textContent = isTour ? `A quick tour · ${step + 1} of ${tour.length}` : `What’s new in Call Note ${version}`;
-    get('title').textContent = isTour ? tour[step].title : 'Copy, join, and share.';
-    get('description').textContent = isTour ? tour[step].description : 'Copy analysis prompts, export a diagnostics report, and open Google Meet with your connected Calendar account.';
+    get('title').textContent = isTour ? tour[step].title : 'A place for your preferences.';
+    get('description').textContent = isTour ? tour[step].description : 'Manage Call Note in Settings, with clear setup instructions for Codex and Claude.';
     get('detail').textContent = isTour ? tour[step].detail : 'This screen appears once after each app update. Reopen it anytime from Help → What’s New.';
     for (const preview of dialog.querySelectorAll('[data-preview]')) preview.hidden = preview.dataset.preview !== (isTour ? tour[step].preview : 'news');
     get('back').hidden = !isTour || step === 0;

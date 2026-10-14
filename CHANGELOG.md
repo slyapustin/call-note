@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.7 — 2026-10-14
+
+- Added Settings from the sidebar and Call Note → Settings (⌘,): appearance, Google Calendar, meeting reminders, assistant setup, and support.
+- Replaced automatic Codex and Claude configuration edits with manual instructions and copyable MCP snippets. The app and setup helper no longer read or modify assistant configuration files.
+- Kept existing MCP connections unchanged. Opening Settings preserves call drafts and selected meetings.
+- Added diagnostics export, update status, and release notes to Settings → Support.
+
 ## 0.2.6 — 2026-10-14
 
 - Fixed Copy analysis prompt failing with browser clipboard permission errors by using the native Mac clipboard.

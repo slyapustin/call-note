@@ -1,6 +1,6 @@
 # Call detection prototype
 
-This feature is under development and is not included in the 0.2.6 download.
+This feature is under development and is not included in the 0.2.7 download.
 
 Call Note's menu-bar menu offers Call detection → Off, Ask me to start (default), or Start transcription automatically. The setting stays on this Mac. Ask shows a Start transcription notification after about five seconds of sustained microphone activity. Auto uses the same signal and starts only when capture permissions are already granted; otherwise it prompts. It never stops a recording just because the microphone becomes inactive. Use Stop & save at the end of the call.
 
