@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.15 — 2026-10-15
+
 - Name speakers in saved calls, apply names throughout a call, or correct individual transcript lines. Names persist locally and appear in text exports and assistant transcripts; they are excluded from analytics.
 
 ## 0.2.14 — 2026-10-15

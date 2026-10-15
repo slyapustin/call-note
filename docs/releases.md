@@ -58,7 +58,7 @@ Apple also accepted DMG submission `eca537aa-d5ed-4d1b-89b3-feca6281a70c`. Both 
 
 Published `v0.2.14` from `aa100a0` as GitHub Latest. All five uploaded asset SHA-256 values match local files; the public `releases/latest/download/latest-mac.yml` exactly matches the local manifest, and its ZIP SHA-512/size are verified. No install or quit/relaunch was performed on the owner’s installed app.
 
-## Unreleased speaker naming
+## 0.2.15 speaker naming
 
 After saving a call, click a speaker label to name it throughout that call or correct only the selected line. Uncertain lines can only be assigned individually. Clearing a name removes that assignment; individual corrections take priority over shared speaker names. Names persist in the local call library and appear in text exports and MCP transcripts, never analytics. This does not recognize people across calls.
 
