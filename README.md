@@ -10,16 +10,16 @@ Call Note transcribes both sides of your calls on your Mac. Find past conversati
 
 *A saved sample conversation. Transcription and your call library stay on your Mac.*
 
-### [Download v0.2.15 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.15/Call-Note-0.2.15-macOS-arm64.dmg)
+### [Download v0.2.14 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.14/Call-Note-0.2.14-macOS-arm64.dmg)
 
-577 MB download · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.15)
+577 MB download · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.14)
 
 **Apple Silicon (M1 or newer) · macOS 14.2+ · English speech**
 
 [Windows 11 x64 preview (.exe)](https://github.com/slyapustin/call-note/releases/download/v0.2.8-windows-preview/Call-Note-0.2.8-Windows-x64.exe) · Unsigned preview, manual updates. [Requirements and testing status](https://github.com/slyapustin/call-note/releases/tag/v0.2.8-windows-preview).
 
 > [!NOTE]
-> **Signed and notarized.** Call Note v0.2.15 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
+> **Signed and notarized.** Call Note v0.2.14 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
 
 ## Get started
 
@@ -69,7 +69,7 @@ Transcription runs locally. Call Note saves text, not call recordings. Connectin
 
 Recording starts manually unless you enable automatic call detection. Calendar events alone do not start recording. Live meeting-app detection and the revised Mac capture path still need validation on affected Macs. If capture fails, export diagnostics from Settings → Support. Speaker labels are estimates, especially with short replies, similar voices, or overlapping speech. Earlier saved calls cannot be relabeled because their audio was not retained; run the sample again to try speaker detection. Use headphones to reduce duplicate audio. Google Calendar sign-in is available to approved test accounts. The Windows preview has additional setup and validation limits listed in its release notes.
 
-Install v0.2.15 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
+Install v0.2.14 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
 
 ## Share a troubleshooting report
 
