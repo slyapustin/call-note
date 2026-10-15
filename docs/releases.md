@@ -89,3 +89,9 @@ Published 0.2.17 as GitHub Latest. All five uploaded SHA-256 digests and sizes m
 Local audio saving now defaults on in the desktop UI. Manual and detected starts use the same choices, retained until the app closes. Extra controls are collapsed under Recording options, with the sources and audio-saving state always visible. During capture, Mute my microphone disables the microphone track and sends silent PCM frames to both transcription and audio storage, preserving elapsed time and system audio. Meeting-app mute remains independent. Existing saved calls are unchanged.
 
 Validation: 91 Python and 184 desktop tests passed, including microphone mute, unmute, source isolation and timing. Independent source review found no blocker. Live Meet mute synchronization is not implemented; native microphone interaction has not been exercised.
+
+Release source: `20cf5d6`. Pre-package, packaged and signed-runtime transcription, speaker detection, streaming/hotwords and MCP checks passed. The collapsed and expanded recording controls were visually checked in an isolated Electron fixture with a disposable profile; this was not a live audio capture test. Apple accepted app submission `d8894be2-fdd9-4781-b927-58cb505af072`; the app was stapled and passed Gatekeeper as Notarized Developer ID.
+
+Apple accepted installer submission `629a8480-b33f-45db-b56e-fe0d677a089b`. The installer was stapled and passed Gatekeeper and disk-image verification. Installer size: 574,011,975 bytes; updater ZIP: 524,144,595 bytes. The installed app and saved calls were untouched; a full installed-app replacement/relaunch was not tested.
+
+Published 0.2.18 as GitHub Latest. All five uploaded asset SHA-256 digests and sizes match local files; the updater ZIP SHA-512 and size are verified. The public latest-mac.yml matches the local manifest.
