@@ -16,7 +16,7 @@ def prepare_service(*, architecture, platform):
     service=BUNDLE/'service'
     if service.exists():shutil.rmtree(service)
     service.mkdir()
-    for name in ['app.py','call_app.py','call_store.py','call_mcp.py','streaming.py','connect_mcp.py','diarization.py','run_service.py']:
+    for name in ['app.py','call_app.py','call_store.py','call_audio.py','call_mcp.py','streaming.py','connect_mcp.py','diarization.py','run_service.py']:
         shutil.copy2(ROOT/'service'/name,service/name)
     for name in ['static','desktop/ui','desktop/licenses']:
         shutil.copytree(ROOT/name,service/name)

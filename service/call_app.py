@@ -1,9 +1,11 @@
 """Authenticated loopback service for the Call Note desktop shell."""
+import hashlib
 import asyncio
 import contextlib
 from contextlib import asynccontextmanager
 import json
 import os
+import re
 import secrets
 import tempfile
 import time
@@ -17,10 +19,12 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app import ROOT, engine, engine_call, local_requests, status
 from call_store import CallStore, transcript_markdown
+from call_audio import CallAudio, audio_path
 from diarization import SpeakerDiagnostics
 from streaming import LiveTranscriber, InvalidAudioError
 
 TOKEN = os.environ.get('CALL_DESK_TOKEN', secrets.token_urlsafe(32))
+AUDIO_TOKEN = hashlib.sha256(('call-audio:' + TOKEN).encode()).hexdigest()
 store = None
 diarizer = None
 IDLE_SECONDS = max(1, int(os.environ.get('CALL_NOTE_IDLE_SECONDS', '120')))
@@ -157,7 +161,11 @@ app.middleware('http')(local_requests)
 
 @app.middleware('http')
 async def authenticated(request: Request, call_next):
-    if request.url.path.startswith('/api/') and not secrets.compare_digest(request.headers.get('x-call-token', ''), TOKEN):
+    media = request.method in ('GET', 'HEAD') and re.fullmatch(r'/api/calls/[0-9a-f]{32}/audio', request.url.path)
+    media_auth = media and request.headers.get('sec-fetch-site') != 'cross-site' and secrets.compare_digest(request.cookies.get('call_audio', ''), AUDIO_TOKEN)
+    if media and request.headers.get('origin') not in (None, f"{request.url.scheme}://{request.headers.get('host')}"):
+        return JSONResponse({'detail': 'Cross-origin audio access denied.'}, status_code=403)
+    if request.url.path.startswith('/api/') and not media_auth and not secrets.compare_digest(request.headers.get('x-call-token', ''), TOKEN):
         return JSONResponse({'detail': 'Desktop authentication required.'}, status_code=401)
     return await call_next(request)
 
@@ -236,6 +244,21 @@ def delete_call(call_id: str):
 def export(call_id: str):
     return PlainTextResponse(transcript_markdown(store.get(call_id)))
 
+@app.post('/api/recordings/session')
+def audio_session():
+    response = JSONResponse({'ok': True}, headers={'Cache-Control': 'no-store'})
+    response.set_cookie('call_audio', AUDIO_TOKEN, httponly=True, samesite='strict', path='/api/calls')
+    return response
+
+@app.get('/api/calls/{call_id}/audio')
+def call_audio(call_id: str, download: bool = False):
+    call = store.get(call_id)
+    if not call['audio']:
+        raise HTTPException(404, 'No saved audio for this call.')
+    return FileResponse(audio_path(store.directory, call_id), media_type='audio/wav',
+                        filename=f'call-{call_id}.wav' if download else None,
+                        headers={'Cache-Control': 'no-store'})
+
 @app.post('/api/demo')
 async def demo(sample: Literal['briefing', 'meeting'] = 'briefing'):
     if engine.busy:
@@ -272,6 +295,7 @@ async def record(socket: WebSocket):
     started = time.monotonic()
     completed = False
     diagnostics = None
+    recording_audio = None
 
     async def publish(source, events):
         for event in events:
@@ -296,12 +320,17 @@ async def record(socket: WebSocket):
         sources = config.get('sources')
         if not isinstance(sources, list) or not sources or len(set(sources)) != len(sources) or any(s not in ('microphone', 'system') for s in sources):
             raise ValueError('Choose microphone, system audio, or both.')
+        save_audio = config.get('save_audio', False)
+        if type(save_audio) is not bool:
+            raise ValueError('Invalid audio saving choice.')
         engine.busy = owned = True
         await ensure_engine()
         event = config.get('calendar_event')
         if event is not None and (not isinstance(event, dict) or len(json.dumps(event)) > 30000):
             raise ValueError('Invalid calendar event metadata.')
         call = store.create(str(config.get('title', 'Untitled call')), calendar_event=event)
+        if save_audio:
+            recording_audio = CallAudio(store.directory, call['id'], sources)
         global latest_diagnostics, latest_has_call
         diagnostics = latest_diagnostics = SpeakerDiagnostics()
         latest_has_call = True
@@ -335,6 +364,8 @@ async def record(socket: WebSocket):
                 offsets.setdefault(source, max(0, time.monotonic() - started - (len(data)-1)/4/16000))
                 if time.monotonic() - started > 4 * 3600:
                     raise ValueError('This preview supports calls up to four hours.')
+                if recording_audio:
+                    recording_audio.write(source, data[1:], offsets[source])
                 await publish(source, await engine_call(sessions[source].feed, data[1:]))
             elif json.loads(message.get('text', '{}')) == {'type': 'stop'}:
                 for source, session in sessions.items():
@@ -342,6 +373,9 @@ async def record(socket: WebSocket):
                     await engine_call(session.finish)
                     events, session.events = session.events, []
                     await publish(source, events)
+                if recording_audio:
+                    recording_audio.close()
+                    recording_audio = None
                 store.finish(call['id'], time.monotonic()-started)
                 completed = True
                 await socket.send_json({'type': 'complete', 'call': store.get(call['id'])})
@@ -359,6 +393,9 @@ async def record(socket: WebSocket):
         except (RuntimeError, WebSocketDisconnect):
             pass
     finally:
+        if recording_audio:
+            with contextlib.suppress(OSError):
+                recording_audio.close()
         if call and not completed:
             # Keep any last decoded phrase when the window or capture stream closes.
             for source, session in sessions.items():

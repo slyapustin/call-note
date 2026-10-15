@@ -323,3 +323,47 @@ def test_recording_error_has_fixed_diagnostic_code(client, monkeypatch, failure,
         assert event['message']
     assert call_app.store.get(cid)['status'] == 'interrupted'
     assert not call_app.engine.busy
+
+
+@pytest.mark.parametrize('save_audio',[False, True])
+def test_optional_audio_playback_export_auth_range_and_deletion(client,monkeypatch,save_audio):
+    monkeypatch.setattr(call_app,'LiveTranscriber',FakeLive)
+    with client.websocket_connect('/api/record',headers={'origin':'http://testserver'}) as ws:
+        ws.send_json({'token':'test-token','sources':['microphone','system'],'save_audio':save_audio})
+        cid=ws.receive_json()['call']['id']
+        for channel in (0,1):
+            ws.send_bytes(bytes([channel])+struct.pack('<800f',*([.25]*800)))
+            ws.receive_json();ws.receive_json()
+        ws.send_json({'type':'stop'})
+        ws.receive_json();ws.receive_json()
+        call=ws.receive_json()['call']
+    path=f'/api/calls/{cid}/audio'
+    assert bool(call['audio'])==save_audio
+    if not save_audio:
+        assert not (call_app.store.directory/'recordings').exists()
+        assert client.get(path).status_code==404
+        return
+    assert client.get(path,headers={'x-call-token':''}).status_code==401
+    assert client.post('/api/recordings/session').status_code==200
+    assert client.get(path,headers={'x-call-token':'','Range':'bytes=0-43'}).status_code==206
+    assert client.get(path,headers={'x-call-token':''}).content[:4]==b'RIFF'
+    assert client.get('/api/calls',headers={'x-call-token':''}).status_code==401
+    assert client.get(path,headers={'x-call-token':'','sec-fetch-site':'cross-site'}).status_code==401
+    assert client.get(path,headers={'origin':'https://example.com'}).status_code==403
+    assert 'attachment' in client.get(path+'?download=true').headers['content-disposition']
+    assert client.delete('/api/calls/'+cid).status_code==200
+    assert client.get(path).status_code==404
+
+
+def test_interrupted_call_retains_incrementally_saved_audio(client,monkeypatch):
+    monkeypatch.setattr(call_app,'LiveTranscriber',FakeLive)
+    with client.websocket_connect('/api/record',headers={'origin':'http://testserver'}) as ws:
+        ws.send_json({'token':'test-token','sources':['microphone'],'save_audio':True})
+        cid=ws.receive_json()['call']['id']
+        ws.send_bytes(b'\0'+struct.pack('<800f',*([.1]*800)))
+        ws.receive_json();ws.receive_json()
+        ws.send_bytes(b'bad')
+        assert ws.receive_json()['type']=='error'
+    saved=call_app.store.get(cid)
+    assert saved['status']=='interrupted'
+    assert saved['audio']['bytes']>=44+1600

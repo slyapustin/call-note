@@ -7,6 +7,7 @@ from pathlib import Path
 import sqlite3
 import sys
 import uuid
+from call_audio import audio_path, audio_info
 
 
 def data_directory():
@@ -130,6 +131,7 @@ class CallStore:
             if call is None:
                 raise KeyError("Call not found")
             result = dict(call)
+            result["audio"] = audio_info(self.directory, call_id) if result["status"] != "recording" else None
             result["calendar_event"] = json.loads(result["calendar_event"]) if result["calendar_event"] else None
             result["segments"] = [dict(row) for row in db.execute(
                 "SELECT * FROM segments WHERE call_id=? ORDER BY start,id", (call_id,))]
@@ -185,6 +187,7 @@ class CallStore:
                 raise KeyError("Call not found")
             if call['status'] == 'recording':
                 raise ValueError("Stop and save the call before deleting it.")
+            audio_path(self.directory, call_id).unlink(missing_ok=True)
             db.execute("DELETE FROM analyses WHERE call_id=?", (call_id,))
             db.execute("DELETE FROM segments WHERE call_id=?", (call_id,))
             db.execute("DELETE FROM calls WHERE id=?", (call_id,))

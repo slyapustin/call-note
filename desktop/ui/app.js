@@ -1,3 +1,4 @@
+import {setupCallAudio} from './call-audio.js';
 import {setupSpeakerNames,speakerLabel} from './speaker-names.js';
 import {captureSystemAudio} from './capture-source.js';
 import {setupIntroduction} from './introduction.js';
@@ -33,6 +34,7 @@ function reportError(error, stage=capture?.errorStage||capture?.stage||health.st
 window.addEventListener('error',event=>reportError(event.error));
 window.addEventListener('unhandledrejection',event=>reportError(event.reason));
 function handle(fn) { return async (...args) => { try {await fn(...args);} catch(error) {reportError(error);notice(error.message);} }; }
+const callAudio=setupCallAudio({api,onError:error=>notice(error.message)});
 const speakerNames=setupSpeakerNames({getCurrent:()=>current,api,onSaved:call=>{
   current=call;
   $('transcript').replaceChildren(...call.segments.map(segment));
@@ -52,7 +54,7 @@ function segment(row) {
 }
 function show(call) {
   if ($('notice').dataset.kind==='sample') notice();
-  current=call;deletion?.render();
+  current=call;deletion?.render();callAudio.render(call);
   const meeting=call.calendar_event; $('meeting-details').hidden=!meeting; $('meeting-details').textContent=meeting?`${new Date(meeting.start).toLocaleString()} · ${(meeting.attendees||[]).map(a=>a.name||a.email).join(', ')}${meeting.meeting_url?' · '+meeting.meeting_url:''}`:'';
   $('heading').textContent=call.title; $('setup').hidden=true;
   $('transcript').replaceChildren(...call.segments.map(segment));
@@ -106,6 +108,7 @@ class Capture {
   constructor() {health={stage:'idle',microphone:false,system:false,microphoneHeard:false,systemHeard:false,framesSent:0,backpressureStops:0,trackEnds:0,segmentsReceived:0};this.stage='idle';this.streams=[];this.nodes=[];this.contexts=[];this.stopping=false;this.active=false;this.partial={};this.meters={};reportHealth();}
   setStage(stage) {this.stage=stage;health.stage=stage;reportHealth();}
   async start() {
+    this.saveAudio=$('save-audio').checked===true;$('save-audio').checked=false;
     if (!$('mic').checked&&!$('system').checked) throw Error('Choose at least one audio source.');
     health.microphone=$('mic').checked;health.system=$('system').checked;
     this.setStage('prepare');
@@ -128,7 +131,7 @@ class Capture {
     this.socket=new WebSocket(location.origin.replace('http:','ws:')+'/api/record');
     await new Promise((resolve,reject)=> {
       const timeout=setTimeout(()=>reject(Error('Recording connection timed out.')),15000);
-      this.socket.onopen=()=>this.socket.send(JSON.stringify({token:session.token,sources:this.streams.map(s=>s.name),calendar_event:selectedEvent,title:$('title').value||`Call · ${new Date().toLocaleDateString()}`}));
+      this.socket.onopen=()=>this.socket.send(JSON.stringify({token:session.token,sources:this.streams.map(s=>s.name),save_audio:this.saveAudio,calendar_event:selectedEvent,title:$('title').value||`Call · ${new Date().toLocaleDateString()}`}));
       this.socket.onerror=()=>{clearTimeout(timeout);reject(Error('Could not connect to the transcription service.'));};
       this.socket.onmessage=event=> {
         const data=JSON.parse(event.data);
@@ -156,7 +159,7 @@ class Capture {
       input.connect(node);node.connect(context.destination);await context.resume();
       source.stream.getAudioTracks().forEach(track=>track.addEventListener('ended',()=>this.trackEnded(source.name)));
     }
-    this.setStage('recording');usage('call_started');
+    this.setStage('recording');usage('call_started');$('recording-label').textContent=this.saveAudio?'Transcribing · saving audio locally':'Transcribing live';
     this.active=true;this.started=Date.now();window.callDesk.recording(true);window.callDesk.menuState({phase:'recording',seconds:0,microphone:this.streams.some(s=>s.name==='microphone'),system:this.streams.some(s=>s.name==='system')});$('setup').hidden=true;$('active').hidden=false;
     timer=setInterval(()=>{if(this.stopping)this.setStage('saving');else reportHealth();window.callDesk.menuState({phase:this.stopping?'saving':'recording',seconds:Math.floor((Date.now()-this.started)/1000)}); $('elapsed').textContent=clock((Date.now()-this.started)/1000); const system=this.meters.system;if(system&&!system.heard&&Date.now()-system.lastSignal>15000){notice(session.platform==='win32'?'No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check your Windows sound output device.':'No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check macOS recording permission.');system.lastSignal=Date.now()+45000;} },1000);
   }
@@ -207,7 +210,7 @@ async function startCapture() {
 }
 $('start').onclick=handle(startCapture);
 $('stop').onclick=handle(()=>finish());
-async function newCall() {if(capture){notice('Stop the current call before starting another.');return;}current=null;deletion?.render();clearSampleAudio();$('transcript').replaceChildren();$('segment-count').textContent='0';$('notes').value='';$('notes').disabled=true;$('save-notes').disabled=true;$('export').disabled=true;$('prompt').disabled=true;$('analyses').replaceChildren();$('meeting-details').hidden=true;$('call-status').textContent='';notice();$('title').value='';selectedEvent=null;$('setup').hidden=false;$('heading').textContent='Ready when you are.';$('title').focus();await refreshCalendar();}
+async function newCall() {if(capture){notice('Stop the current call before starting another.');return;}current=null;deletion?.render();callAudio.clear();$('save-audio').checked=false;clearSampleAudio();$('transcript').replaceChildren();$('segment-count').textContent='0';$('notes').value='';$('notes').disabled=true;$('save-notes').disabled=true;$('export').disabled=true;$('prompt').disabled=true;$('analyses').replaceChildren();$('meeting-details').hidden=true;$('call-status').textContent='';notice();$('title').value='';selectedEvent=null;$('setup').hidden=false;$('heading').textContent='Ready when you are.';$('title').focus();await refreshCalendar();}
 $('new').onclick=handle(newCall);
 $('demo').onclick=handle(async()=>{if(!await privacy.ensure())return;usage('feature_used',{feature:'sample'});const kind=$('sample-kind').value;sampleRunning=true;notice('Detecting speakers and transcribing the sample locally…');$('demo').disabled=true;try{show(await api(`/demo?sample=${kind}`,{method:'POST'}));const speakers=new Set(current.segments.map(row=>row.speaker).filter(Boolean)).size;notice(speakers?`Sample saved · ${speakers} ${speakers===1?'speaker':'speakers'} detected. Press play above the transcript to listen.`:'Sample saved, but no reliable speaker labels were detected. Use the player above the transcript to listen, or choose New call → Try sample to try again.', 'sample');await library();}finally{sampleRunning=false;await status();}});
 $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(handle(()=>library()),200);};
@@ -226,6 +229,7 @@ window.callDesk.onDetectedStart(async request=>{
     if(current&&$('notes').value!==current.notes)throw Error('Save your edited notes before starting transcription.');
     if($('setup').hidden)await newCall();
     else await refreshCalendarPreservingDraft();
+    $('save-audio').checked=false;
     started=await startCapture();
   } catch(error) {reportError(error);notice(error.message);}
   finally {window.callDesk.detectedResult({id:request.id,started});}

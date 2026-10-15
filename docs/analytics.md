@@ -28,3 +28,5 @@ The dashboard has no analytics MCP server in this first implementation. CSV and 
 ## Checks
 
 Run `node --test desktop/*.test.cjs`, `npm test --prefix analytics`, and `.venv/bin/python -m pytest -q`. Cloudflare tests exercise real local D1 plus signed JWT test fixtures. They do not establish production sign-in, visual browser behavior or consent from any real user.
+
+Optional local call recordings are separate from usage analytics. WAV files stay in the local call library and are never attached to events or diagnostic reports. The recording choice does not change analytics consent.

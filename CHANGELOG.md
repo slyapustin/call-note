@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.2.17 — 2026-10-15
+
+- Add optional local WAV recording for each call, off by default. Automatic starts keep audio saving off.
+- Play and export saved audio from the call library; deleting a call also removes its local recording. Audio received before an interruption remains available.
+- Stream playback locally with authenticated range requests. Audio never enters usage analytics.
+
 ## 0.2.16 — 2026-10-15
 
 - Limit finite audio peaks before decoding so an out-of-range sample does not end a call. Invalid non-finite input is still rejected.

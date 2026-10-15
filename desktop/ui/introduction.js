@@ -2,7 +2,7 @@ const tour = [
   {
     title: 'Your calls, written down.',
     description: 'Start a call to transcribe your microphone and the voices you hear. Everything is processed on your device.',
-    detail: 'Recording starts when you choose Start call or enable automatic starting in Settings. Use headphones for clearer results. Call Note saves the transcript, not the recording.',
+    detail: 'Recording starts when you choose Start call or enable automatic starting in Settings. Use headphones for clearer results. Call Note saves transcripts. You can also enable local audio saving for an individual call.',
     preview: 'voices',
   },
   {
@@ -27,8 +27,8 @@ export function setupIntroduction({bridge, version, canOpen, onError}) {
   function render() {
     const isTour = kind === 'tour';
     get('eyebrow').textContent = isTour ? `A quick tour · ${step + 1} of ${tour.length}` : `What’s new in Call Note ${version}`;
-    get('title').textContent = isTour ? tour[step].title : 'Clearer recording recovery.';
-    get('description').textContent = isTour ? tour[step].description : 'Audio peaks no longer end an otherwise valid recording. If recording is interrupted, its explanation stays visible and diagnostics distinguish more failure types.';
+    get('title').textContent = isTour ? tour[step].title : 'Keep the audio when you need it.';
+    get('description').textContent = isTour ? tour[step].description : 'Choose Save audio locally for an individual call, then play or export its recording from the saved call. Audio saving starts off and stays on your device.';
     get('detail').textContent = isTour ? tour[step].detail : 'This screen appears once after each app update. Reopen it anytime from Help → What’s New.';
     for (const preview of dialog.querySelectorAll('[data-preview]')) preview.hidden = preview.dataset.preview !== (isTour ? tour[step].preview : 'news');
     get('back').hidden = !isTour || step === 0;
