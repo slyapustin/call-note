@@ -73,3 +73,13 @@ Finite capture peaks are limited to the decoder's range instead of stopping the 
 Release source: `2d3cf52`. Validation passed: 85 Python tests, 181 desktop tests, pre-package, packaged and signed-runtime transcription, speaker detection, streaming/hotwords and MCP. Apple accepted app submission `7ba8df21-8a74-42b2-96ce-2c785af0f90f` and DMG submission `be352b52-ec1d-4b30-86ec-62715c1484c8`. Both were stapled. The installer is 574,790,274 bytes and the update ZIP is 524,140,512 bytes. The owner's installed app and saved calls were untouched; a full installed-app replacement/relaunch was not tested.
 
 Published 0.2.16 as GitHub Latest. App and DMG passed Gatekeeper and stapler validation; the DMG passed disk-image verification. All five uploaded SHA-256 digests and sizes match local artifacts. The update ZIP SHA-512 and size are verified, and the public latest-mac.yml exactly matches the local manifest.
+
+## 0.2.17 optional local recordings
+
+Release source: `e34ea79`. Local WAV saving is a strict per-call opt-in, reset after each start and disabled for automatic starts. Saved audio streams through an authenticated local endpoint with range support; audio is deleted with its call and never enters analytics. With two sources, microphone is left and system audio is right; a single source is mono. Received audio is flushed incrementally so interrupted calls retain their captured audio.
+
+Validation: 91 Python tests and 183 desktop tests passed. Tests cover opt-in/off, stereo alignment, finite peaks, private permissions, persistence, interrupted recordings, media authentication, range/export requests, cross-origin rejection, deletion and stale-player races. Independent review found no release-blocking issue. Pre-package, packaged and signed-runtime speech checks passed; the signed runtime also passed synthetic stereo WAV creation, persistence and deletion. Browser preview was blocked by local-URL restrictions, so no live browser/Electron capture claim is made. The installed app and saved calls were untouched; full installed-app replacement/relaunch was not tested.
+
+Apple accepted app submission `bd1534e1-04f3-4916-941a-7e7a72adbddf` and DMG submission `f6c9b552-183d-4edf-b5dc-9474523ff20c`. Both were stapled and passed Gatekeeper. The DMG passed disk-image verification. Installer size: 585,528,257 bytes; updater ZIP: 524,144,273 bytes.
+
+Published 0.2.17 as GitHub Latest. All five uploaded SHA-256 digests and sizes match the local release assets. The update ZIP SHA-512 and size are verified, and the public latest-mac.yml exactly matches the local manifest.
