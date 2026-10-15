@@ -10,6 +10,7 @@ function fixture() {
   const declarations=source.slice(source.indexOf('const captureStages'),source.indexOf("window.addEventListener('error'"));
   const capture=source.slice(source.indexOf('class Capture {'),source.indexOf('\nasync function finish('));
   const context=vm.createContext({
+    usage(){},
     $:()=>({replaceChildren(){},dataset:{}}),
     WebSocket:{OPEN:1},
     window:{callDesk:{reportHealth:value=>healthEvents.push(value),reportError:value=>errors.push(value),recording(){}}},

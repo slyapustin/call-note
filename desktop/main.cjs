@@ -6,7 +6,7 @@ const path = require('node:path');
 const net = require('node:net');
 app.setName('Call Note');
 app.setPath('userData', path.join(app.getPath('appData'), 'CallDesk'));
-let calendar, updates, callTray, reminders, introduction, callDetection, detectionLifecycle;
+let calendar, updates, callTray, reminders, introduction, callDetection, detectionLifecycle, analytics;
 let window, service, quitting = false, recording = false;
 const token = randomBytes(32).toString('hex');
 let origin;
@@ -25,6 +25,9 @@ app.whenReady().then(async () => {
   const data = app.getPath('userData');
   const {Diagnostics} = require('./diagnostics.cjs');
   const diagnostics = new Diagnostics({directory:data,version:app.getVersion(),versions:process.versions,platform:process.platform,arch:process.arch,osRelease:require('node:os').release()});
+  const {registerPrivacy}=require('./privacy.cjs');
+  analytics=registerPrivacy({ipcMain,trusted,directory:data,version:app.getVersion(),platform:process.platform,config:require('./privacy-config.json')}).manager;
+  analytics.start();analytics.track('app_open',{});
   const {registerSupport,createDiagnosticsExporter} = require('./support.cjs');
   registerSupport({ipcMain,clipboard,trusted,diagnostics});
   const exportDiagnostics = createDiagnosticsExporter({dialog,shell,getWindow:()=>window,diagnostics,downloads:app.getPath('downloads'),getState:async()=>{
@@ -78,7 +81,7 @@ app.whenReady().then(async () => {
       try {await calendar.disconnect();return {connected:false};} finally {reminders.reset();reminders.start();}
     }
     const result=await calendar[action]();
-    if(action==='connect')await reminders.refresh();
+    if(action==='connect'){await reminders.refresh();analytics.track('feature_used',{feature:'calendar'});}
     return result;
   });
   fs.mkdirSync(data, {recursive:true, mode:0o700});
@@ -152,7 +155,7 @@ app.whenReady().then(async () => {
   powerMonitor.on('suspend',()=>{reminders.reset();detectionLifecycle.stopMonitoring();});
   powerMonitor.on('resume',async()=>{detectionLifecycle.observeEngine(callTray.state.engine);await reminders.pending?.catch(()=>{});reminders.refresh().catch(()=>{});});
   ipcMain.on('tray:state',(event,value)=>{if(trusted(event)){callTray.update(value);detectionLifecycle.observeEngine(callTray.state.engine);}});
-  window.webContents.on('render-process-gone',(_event,details)=>{diagnostics.record('renderer',{name:'Error',code:'RENDERER_GONE',reason:details.reason,exitCode:details.exitCode});recording=false;detectionLifecycle.stopMonitoring();callTray.update({phase:'idle',engine:'error'});});
+  window.webContents.on('render-process-gone',(_event,details)=>{analytics.track('error',{errorCode:'renderer_gone'});diagnostics.record('renderer',{name:'Error',code:'RENDERER_GONE',reason:details.reason,exitCode:details.exitCode});recording=false;detectionLifecycle.stopMonitoring();callTray.update({phase:'idle',engine:'error'});});
   let ready = false;
   for (let attempt=0;attempt<300;attempt++) {
     try { if ((await fetch(origin)).ok) {ready=true;break;} } catch {}
@@ -163,12 +166,12 @@ app.whenReady().then(async () => {
   updates.start();
   reminders.start();
 });
-require('electron').autoUpdater.on('before-quit-for-update',()=>{quitting=true;detectionLifecycle?.stopMonitoring();service?.stop();});
+require('electron').autoUpdater.on('before-quit-for-update',()=>{quitting=true;analytics?.stop();detectionLifecycle?.stopMonitoring();service?.stop();});
 app.on('window-all-closed', () => app.quit());
 app.on('before-quit', event => {
   if(recording&&!quitting){
     const choice=dialog.showMessageBoxSync(window,{type:'question',buttons:['Keep recording','Quit and end call'],defaultId:0,cancelId:0,message:'A call is being transcribed.',detail:'Quitting saves finalized text and marks the call interrupted.'});
     if(choice===0){event.preventDefault();return;}
   }
-  quitting=true;detectionLifecycle?.stopMonitoring();reminders?.stop();service?.stop();
+  quitting=true;analytics?.stop();detectionLifecycle?.stopMonitoring();reminders?.stop();service?.stop();
 });

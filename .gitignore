@@ -31,3 +31,7 @@ models/
 
 samples/meeting-turns.json
 desktop/google-oauth.json
+
+analytics/node_modules/
+analytics/.wrangler/
+analytics/.dev.vars

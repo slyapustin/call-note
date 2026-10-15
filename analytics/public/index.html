@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Call Note · Product analytics</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to analytics</a>
+  <header class="masthead"><a class="brand" href="/">Call Note <span>Product analytics</span></a><span class="private-label">Private workspace</span></header>
+  <main id="main">
+    <div class="page-heading"><div><h1>Product activity</h1><p>Understand usage from installations that choose to share analytics.</p></div><a id="export" class="button" href="/api/export.csv?days=30">Export CSV</a></div>
+    <form id="filters" class="filters" aria-label="Analytics filters">
+      <label>Period<select id="days" name="days"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></label>
+      <label>App version<select id="version" name="version"><option value="">All versions</option></select></label>
+      <label>Platform<select id="platform" name="platform"><option value="">All platforms</option></select></label>
+      <button type="submit">Refresh</button><span id="updated" class="muted"></span>
+    </form>
+    <div id="status" class="status" role="status" aria-live="polite">Loading analytics…</div>
+    <noscript><p class="status">Enable JavaScript to load analytics. You can also use Export CSV.</p></noscript>
+    <div id="results" hidden>
+      <section class="metrics" aria-label="Activity totals">
+        <div><span>Active installations</span><strong id="activeInstallations">—</strong><small>Distinct in selected period</small></div>
+        <div><span>Events</span><strong id="events">—</strong></div>
+        <div><span>Calls started</span><strong id="callsStarted">—</strong></div>
+        <div><span>Calls completed</span><strong id="callsCompleted">—</strong></div>
+        <div><span>Call minutes</span><strong id="durationMinutes">—</strong></div>
+      </section>
+      <section class="trend panel" aria-labelledby="trend-heading">
+        <div class="section-heading"><div><h2 id="trend-heading">Daily activity</h2><p>Distinct active installations per day · UTC</p></div><label class="chart-control">Show<select id="metric"><option value="activeInstallations">Active installations</option><option value="events">Events</option><option value="callsStarted">Calls started</option><option value="callsCompleted">Calls completed</option><option value="durationMinutes">Call minutes</option></select></label></div>
+        <div id="chart" class="chart"></div>
+        <p class="footnote">Active installations are devices that sent analytics that day, not people. Daily counts must not be summed to estimate unique installations over the period.</p>
+        <details><summary>View daily data</summary><div class="table-scroll"><table><caption class="sr-only">Daily analytics in UTC</caption><thead><tr><th scope="col">Day (UTC)</th><th scope="col">Active installations</th><th scope="col">Events</th><th scope="col">Calls started</th><th scope="col">Calls completed</th><th scope="col">Minutes</th></tr></thead><tbody id="daily"></tbody></table></div></details>
+      </section>
+      <div class="breakdowns">
+        <section class="panel"><h2>App versions</h2><p class="muted">Event distribution, not installation share</p><div class="table-scroll"><table><thead><tr><th scope="col">Version</th><th scope="col">Events</th></tr></thead><tbody id="versions"></tbody></table></div></section>
+        <section class="panel"><h2>Platforms</h2><p class="muted">Event distribution, not installation share</p><div class="table-scroll"><table><thead><tr><th scope="col">Platform</th><th scope="col">Events</th></tr></thead><tbody id="platforms"></tbody></table></div></section>
+        <section class="panel"><h2>Feature usage</h2><p class="muted">Recorded feature events</p><div class="table-scroll"><table><thead><tr><th scope="col">Feature</th><th scope="col">Events</th></tr></thead><tbody id="features"></tbody></table></div></section>
+        <section class="panel"><h2>Reported errors</h2><p class="muted">Error codes from opted-in installations</p><div class="table-scroll"><table><thead><tr><th scope="col">Error code</th><th scope="col">Events</th></tr></thead><tbody id="errors"></tbody></table></div></section>
+      </div>
+      <section class="consent panel" aria-labelledby="consent-heading"><div><h2 id="consent-heading">Consent records</h2><p>These records describe recorded consent, not all users. Usage above represents only installations with analytics enabled and may not reflect the wider user base.</p><p id="consent-versions" class="muted"></p></div><dl><div><dt>Recorded installations</dt><dd id="installations">—</dd></div><div><dt>Accepted terms</dt><dd id="accepted">—</dd></div><div><dt>Analytics enabled</dt><dd id="analyticsEnabled">—</dd></div></dl><p class="footnote">Recorded installations counts installation terms records, not active users. Consent totals are all-time and unfiltered. They are not an adoption or conversion rate.</p></section>
+    </div>
+    <footer>Call Note analytics <span>No call content is shown in this dashboard.</span></footer>
+  </main>
+</body>
+</html>

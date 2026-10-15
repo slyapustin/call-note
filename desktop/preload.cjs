@@ -1,5 +1,10 @@
 const {contextBridge, ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('callDesk', {
+  privacyStatus:()=>ipcRenderer.invoke('privacy:status'),
+  privacyAccept:()=>ipcRenderer.invoke('privacy:accept'),
+  privacyAnalytics:value=>ipcRenderer.invoke('privacy:analytics',value),
+  privacyDelete:()=>ipcRenderer.invoke('privacy:delete'),
+  usageEvent:(name,properties)=>ipcRenderer.send('privacy:event',name,properties),
   copyText:text=>ipcRenderer.invoke('clipboard:write',text),
   reportError:error=>ipcRenderer.send('diagnostics:error',error),
   reportHealth:value=>ipcRenderer.send('diagnostics:health',value),

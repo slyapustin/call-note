@@ -15,6 +15,7 @@
       <button id="settings-tab-general" role="tab" aria-selected="true" aria-controls="settings-general" data-settings-tab="general">General</button>
       <button id="settings-tab-calendar" role="tab" aria-selected="false" aria-controls="settings-calendar" tabindex="-1" data-settings-tab="calendar">Calendar</button>
       <button id="settings-tab-assistants" role="tab" aria-selected="false" aria-controls="settings-assistants" tabindex="-1" data-settings-tab="assistants">Assistants</button>
+      <button id="settings-tab-privacy" role="tab" aria-selected="false" aria-controls="settings-privacy" tabindex="-1" data-settings-tab="privacy">Privacy</button>
       <button id="settings-tab-support" role="tab" aria-selected="false" aria-controls="settings-support" tabindex="-1" data-settings-tab="support">Support</button>
     </nav>
     <div id="settings-content" class="settings-content">
@@ -41,6 +42,7 @@
         <p class="settings-footnote">Install Call Note before copying. If you move the app later, copy an updated configuration.</p>
         <p id="settings-mcp-copy-note" class="settings-footnote">Copying does not configure the other app. Follow the steps above and preserve any existing settings.</p>
       </section>
+      <section id="settings-privacy" role="tabpanel" aria-labelledby="settings-tab-privacy" data-settings-panel="privacy" hidden><h3>Privacy</h3><p class="settings-description">Review the terms, choose whether to share usage statistics, or delete previously shared usage data. Your calls stay on this device.</p><button id="settings-privacy-manage">Privacy choices…</button></section>
       <section id="settings-support" role="tabpanel" aria-labelledby="settings-tab-support" data-settings-panel="support" hidden>
         <h3>Support</h3><div class="settings-row"><div><strong>Call Note <span id="settings-version"></span></strong><p id="settings-update-status">Updates check automatically.</p></div><button id="settings-updates">Updates…</button></div>
         <div class="settings-row"><div><strong>Release notes</strong><p>See what changed in each version.</p></div><button id="settings-releases">View release notes</button></div>
@@ -51,6 +53,7 @@
     </div>
   </div>
 </dialog>
+<dialog id="privacy-dialog" class="settings-dialog privacy-dialog" aria-labelledby="privacy-title"><div class="settings-header"><h2 id="privacy-title">Your privacy choices</h2><button id="privacy-close">Later</button></div><div class="privacy-content"><pre id="privacy-documents" class="privacy-documents"></pre><p id="privacy-status" role="status"></p><label class="privacy-choice"><input type="checkbox" id="privacy-accepted"> I accept the terms and have read the Privacy Notice.</label><label class="privacy-choice"><input type="checkbox" id="privacy-choice"> Share optional usage statistics to help improve Call Note.</label><p class="hint">Terms acceptance sends a minimal acceptance record. Usage statistics are a separate choice. No audio or transcript text is included.</p><div class="actions"><button id="privacy-save" class="primary">Save choices</button><button id="privacy-delete">Delete usage data…</button></div><div id="privacy-delete-confirm" hidden><p>Delete this installation’s usage data and acceptance record? Saved calls will remain. Collection stops immediately; deletion completes when online.</p><button id="privacy-delete-cancel">Cancel</button><button id="privacy-delete-confirm-button" class="danger">Delete usage data</button></div></div></dialog>
 <dialog id="update-dialog"><h2>Call Note updates</h2><p id="update-status" role="status"></p><p id="update-description" class="hint">Checks run automatically every four hours. Stable updates download in the background and install when you quit. Test releases are available through View downloads.</p><div class="actions"><button id="update-check">Check now</button><button id="update-downloads">View downloads</button><button id="update-install" class="primary" hidden>Restart &amp; install</button><button id="update-close">Close</button></div></dialog>
 <dialog id="introduction" class="introduction" aria-labelledby="intro-title" aria-describedby="intro-description">
   <div class="intro-top"><span class="intro-brand"><img src="/ui/icon.png" alt="">Call Note</span><button id="intro-skip">Skip tour</button></div>

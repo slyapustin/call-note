@@ -8,6 +8,7 @@ function fixture(prepare) {
   const source=fs.readFileSync(path.join(__dirname,'ui/app.js'),'utf8');
   const capture=source.slice(source.indexOf('class Capture {'),source.indexOf('\nasync function finish('));
   const context=vm.createContext({
+    usage(){},
     $:id=>({checked:id==='mic',dataset:{}}),session:{platform:'win32'},
     api:async(route,options)=>{calls.push([route,options.method]);return prepare();},
     health:{stage:'idle',microphone:false,system:false,microphoneHeard:false,systemHeard:false,framesSent:0,backpressureStops:0,trackEnds:0,segmentsReceived:0},

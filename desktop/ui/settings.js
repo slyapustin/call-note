@@ -1,6 +1,6 @@
-const sections = ['general', 'calendar', 'assistants', 'support'];
+const sections = ['general', 'calendar', 'assistants', 'privacy', 'support'];
 
-export function setupSettings({bridge, version, refreshCalendar, openUpdates, beforeOpen = () => {}, onError = () => {}}) {
+export function setupSettings({bridge, version, refreshCalendar, openUpdates, openPrivacy=async()=>{}, beforeOpen = () => {}, onError = () => {}}) {
   const get = id => document.getElementById(`settings-${id}`);
   const dialog = get('dialog');
   let section = 'general', returnFocus, preferences, clients = [], calendarBusy = false, calendarState;
@@ -137,9 +137,11 @@ export function setupSettings({bridge, version, refreshCalendar, openUpdates, be
   get('client').onchange = () => {message(); renderClient();};
   get('mcp-copy').onclick = action(get('mcp-copy'), async () => {
     await bridge.copyText(get('mcp-config').value);
+    bridge.usageEvent?.('feature_used',{feature:'mcp_setup'});
     message('Configuration copied. Follow the setup steps in your assistant; its settings have not been changed.');
   });
   get('mcp-docs').onclick = action(get('mcp-docs'), () => bridge.mcpDocs(get('client').value));
+  get('privacy-manage').onclick = action(get('privacy-manage'),async()=>{close();await openPrivacy();});
   get('diagnostics').onclick = action(get('diagnostics'), () => bridge.exportDiagnostics());
   get('releases').onclick = action(get('releases'), () => bridge.updateDownloads());
   get('updates').onclick = action(get('updates'), async () => {close(); await openUpdates();});

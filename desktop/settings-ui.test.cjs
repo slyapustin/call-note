@@ -167,6 +167,7 @@ test('Settings and update dialog controls work while initial library loading is 
   const settings=fs.readFileSync(path.join(__dirname,'ui/settings.js'),'utf8').replace('export function setupSettings','function setupSettings');
   vm.runInContext(settings,context);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'ui/delete-call.js'),'utf8').replace('export function setupDeleteCall','function setupDeleteCall'),context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'ui/privacy.js'),'utf8').replace('export function setupPrivacy','function setupPrivacy'),context);
   const app=fs.readFileSync(path.join(__dirname,'ui/app.js'),'utf8').replace(/^import .*;\r?\n/gm,'');
   vm.runInContext(`(async()=>{${app}\n})()`,context);
   await settle();assert.equal(requested,true);
