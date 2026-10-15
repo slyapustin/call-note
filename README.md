@@ -35,7 +35,7 @@ Call Note transcribes both sides of your calls on your Mac. Find past conversati
 - **Make it yours.** Open **Settings** from the sidebar or press **⌘,** to manage appearance, Calendar, meeting reminders, and support. Follow your Mac’s appearance, or choose Light or Dark. Revisit the tour and update highlights from **Help**.
 - **Start when a call is detected.** On Mac, choose **Settings → General → Call detection**. Get a prompt (default), or enable automatic transcription. Use **Stop & save** when finished. Detection is an early feature: microphone tests may trigger it, and muted calls may be missed.
 - **Read as you talk.** Live transcription of your microphone and the other side of a call.
-- **Keep audio when needed.** Enable Save audio locally for an individual call. Play or export its WAV recording from the library; deleting the call removes its audio. Automatic starts keep audio saving off.
+- **Keep audio when needed.** Audio saves locally by default; turn it off under Recording options for transcript-only calls. Play or export its WAV recording from the library; deleting the call removes its audio. Automatic starts use the same recording options.
 - **Follow each speaker.** Speaker numbers identify voices in system audio; weak matches show Speaker uncertain. Your microphone stays labeled You. [Validation and limits](docs/speaker-validation.md).
 - **Find what mattered.** Search saved calls, add notes, or export the transcript. Delete unwanted calls from your library with confirmation.
 - **Free memory between calls.** Speech models load when needed and the speech service releases its memory after two idle minutes. The next call takes a few seconds to prepare.
@@ -66,7 +66,7 @@ These measurements use 0.2.8 builds with the model already loaded, excluding sta
 
 ## Before you try it
 
-Transcription runs locally. Call Note saves transcripts and, when you enable Save audio locally for a call, its WAV recording. Audio saving defaults to off; saved audio can be played, exported, and deleted with the call. Connecting an assistant lets it access your call library; transcript text it reads is subject to that assistant’s data policies.
+Transcription runs locally. Call Note saves transcripts and, by default, its WAV recording. You can disable audio saving in Recording options; saved audio can be played, exported, and deleted with the call. Connecting an assistant lets it access your call library; transcript text it reads is subject to that assistant’s data policies.
 
 Recording starts manually unless you enable automatic call detection. Calendar events alone do not start recording. Live meeting-app detection and the revised Mac capture path still need validation on affected Macs. If capture fails, export diagnostics from Settings → Support. Speaker labels are estimates, especially with short replies, similar voices, or overlapping speech. Earlier saved calls cannot be relabeled because their audio was not retained; run the sample again to try speaker detection. Use headphones to reduce duplicate audio. Google Calendar sign-in is available to approved test accounts. The Windows preview has additional setup and validation limits listed in its release notes.
 

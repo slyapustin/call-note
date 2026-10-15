@@ -11,7 +11,7 @@ function fixture() {
   const capture=source.slice(source.indexOf('class Capture {'),source.indexOf('\nasync function finish('));
   const context=vm.createContext({
     usage(){},
-    $:()=>({replaceChildren(){},dataset:{}}),
+    $:()=>({replaceChildren(){},setAttribute(){},dataset:{}}),
     WebSocket:{OPEN:1},
     window:{callDesk:{reportHealth:value=>healthEvents.push(value),reportError:value=>errors.push(value),recording(){}}},
     clearInterval(){},timer:null,
@@ -69,4 +69,26 @@ test('stopping an interrupted call retains its explanation while refreshing save
   await context.finish(false,'Recording timed out. Saved text is retained.');
   assert.deepEqual(notices,['Recording timed out. Saved text is retained.']);
   assert.equal(context.capture,null);
+});
+
+
+test('microphone mute silences queued frames without dropping time or system audio',()=>{
+  const f=fixture(),sent=[],track={enabled:true};
+  f.capture.active=true;
+  f.capture.renderPartials=()=>{};
+  f.capture.streams=[{name:'microphone',stream:{getAudioTracks:()=>[track]}}];
+  f.capture.socket={readyState:1,bufferedAmount:0,send:value=>sent.push(value)};
+  f.capture.meters={microphone:{},system:{}};
+  const audio=new Float32Array([.25,.5]).buffer,meter={value:0};
+  f.capture.toggleMicrophone();assert.equal(track.enabled,false);
+  f.capture.sendAudioFrame('microphone',audio,meter);
+  assert.equal(meter.value,0);
+  assert.deepEqual(Array.from(new Float32Array(sent[0].slice(1).buffer)),[0,0]);
+  f.capture.sendAudioFrame('system',audio,meter);
+  assert.deepEqual(Array.from(new Float32Array(sent[1].slice(1).buffer)),[.25,.5]);
+  f.capture.toggleMicrophone();assert.equal(track.enabled,true);
+  f.capture.sendAudioFrame('microphone',audio,meter);
+  assert.deepEqual(Array.from(new Float32Array(sent[2].slice(1).buffer)),[.25,.5]);
+  assert.equal(f.context.getHealth().framesSent,3);
+  f.capture.stopping=true;f.capture.toggleMicrophone();assert.equal(track.enabled,true);
 });

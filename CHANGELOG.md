@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.2.18 — 2026-10-15
+
+- Save call audio locally by default for manual and automatic starts, with a transcript-only option. Recording choices remain in effect until the app closes.
+- Collapse extra controls into Recording options and show a concise source/saving summary.
+- Add a separate live microphone mute for Call Note, silencing both transcription and saved audio while keeping system audio. Meeting-app mute is independent.
+
 ## 0.2.17 — 2026-10-15
 
 - Add optional local WAV recording for each call, off by default. Automatic starts keep audio saving off.

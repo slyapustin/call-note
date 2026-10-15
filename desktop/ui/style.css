@@ -97,3 +97,5 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 }
 
 .segment .speaker-edit{font:inherit;font-weight:650;padding:0;border:0;border-radius:2px;text-align:left;white-space:normal;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}.segment .speaker-edit:disabled{opacity:1;text-decoration:none}
+
+.recording-options summary{cursor:pointer;font-size:12px;color:var(--green);padding:6px 0}.recording-options .capture-options{margin:10px 0}#mute-mic[aria-pressed="true"]{color:var(--danger);border-color:var(--danger-border)}
