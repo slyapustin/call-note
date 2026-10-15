@@ -10,7 +10,7 @@ Call Note transcribes both sides of your calls on your Mac. Find past conversati
 
 *A saved sample conversation. Transcription and your call library stay on your Mac.*
 
-### [Download v0.2.14 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.14/Call-Note-0.2.13-macOS-arm64.dmg)
+### [Download v0.2.14 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.14/Call-Note-0.2.14-macOS-arm64.dmg)
 
 577 MB download · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.14)
 
