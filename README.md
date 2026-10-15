@@ -10,16 +10,16 @@ Call Note transcribes both sides of your calls on your Mac. Find past conversati
 
 *A saved sample conversation. Transcription and your call library stay on your Mac.*
 
-### [Download v0.2.18 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.18/Call-Note-0.2.18-macOS-arm64.dmg)
+### [Download v0.2.19 for Mac →](https://github.com/slyapustin/call-note/releases/download/v0.2.19/Call-Note-0.2.19-macOS-arm64.dmg)
 
-574 MB download · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.18)
+578 MB download · [Release notes](https://github.com/slyapustin/call-note/releases/tag/v0.2.19)
 
 **Apple Silicon (M1 or newer) · macOS 14.2+ · English speech**
 
 [Windows 11 x64 preview (.exe)](https://github.com/slyapustin/call-note/releases/download/v0.2.8-windows-preview/Call-Note-0.2.8-Windows-x64.exe) · Unsigned preview, manual updates. [Requirements and testing status](https://github.com/slyapustin/call-note/releases/tag/v0.2.8-windows-preview).
 
 > [!NOTE]
-> **Signed and notarized.** Call Note v0.2.18 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
+> **Signed and notarized.** Call Note v0.2.19 and its Mac installer are signed with Apple Developer ID, notarized by Apple, and verified with macOS Gatekeeper.
 
 ## Get started
 
@@ -36,6 +36,7 @@ Call Note transcribes both sides of your calls on your Mac. Find past conversati
 - **Start when a call is detected.** On Mac, choose **Settings → General → Call detection**. Get a prompt (default), or enable automatic transcription. Use **Stop & save** when finished. Detection is an early feature: microphone tests may trigger it, and muted calls may be missed.
 - **Read as you talk.** Live transcription of your microphone and the other side of a call.
 - **Keep audio when needed.** Audio saves locally by default; turn it off under Recording options for transcript-only calls. Play or export its WAV recording from the library; deleting the call removes its audio. Automatic starts use the same recording options.
+- **Wait for complete phrases.** Transcripts appear after a short pause instead of rolling drafts. Confirmed cross-source echoes are reduced using local text and audio comparison; ambiguous matches and genuine repeated replies are kept.
 - **Follow each speaker.** Speaker numbers identify voices in system audio; weak matches show Speaker uncertain. Your microphone stays labeled You. [Validation and limits](docs/speaker-validation.md).
 - **Find what mattered.** Search saved calls, add notes, or export the transcript. Delete unwanted calls from your library with confirmation.
 - **Free memory between calls.** Speech models load when needed and the speech service releases its memory after two idle minutes. The next call takes a few seconds to prepare.
@@ -70,7 +71,7 @@ Transcription runs locally. Call Note saves transcripts and, by default, its WAV
 
 Recording starts manually unless you enable automatic call detection. Calendar events alone do not start recording. Live meeting-app detection and the revised Mac capture path still need validation on affected Macs. If capture fails, export diagnostics from Settings → Support. Speaker labels are estimates, especially with short replies, similar voices, or overlapping speech. Earlier saved calls cannot be relabeled because their audio was not retained; run the sample again to try speaker detection. Use headphones to reduce duplicate audio. Google Calendar sign-in is available to approved test accounts. The Windows preview has additional setup and validation limits listed in its release notes.
 
-Install v0.2.18 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
+Install v0.2.19 manually if your older version cannot update. Call Note checks for updates automatically and installs downloaded updates when you quit.
 
 ## Share a troubleshooting report
 
