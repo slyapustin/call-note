@@ -29,10 +29,10 @@ class CallStore:
         if self.path.exists():
             with sqlite3.connect(self.path) as source:
                 columns = {row[1] for row in source.execute("PRAGMA table_info(segments)")}
-                if columns and "speaker" not in columns:
+                if columns and not {"speaker", "speaker_name"}.issubset(columns):
                     backups = self.directory / 'backups'
                     backups.mkdir(exist_ok=True, mode=0o700)
-                    backup = backups / f'calls-before-speakers-{uuid.uuid4().hex}.sqlite3'
+                    backup = backups / f'calls-before-speaker-names-{uuid.uuid4().hex}.sqlite3'
                     with sqlite3.connect(backup) as target:
                         source.backup(target)
                     if os.name != 'nt':
@@ -51,6 +51,11 @@ class CallStore:
                     source TEXT NOT NULL, start REAL NOT NULL, end REAL NOT NULL, text TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS segments_call ON segments(call_id, start);
+                CREATE TABLE IF NOT EXISTS speaker_names (
+                    call_id TEXT NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+                    source TEXT NOT NULL, speaker INTEGER NOT NULL, name TEXT NOT NULL,
+                    PRIMARY KEY(call_id, source, speaker)
+                );
                 CREATE TABLE IF NOT EXISTS analyses (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, call_id TEXT NOT NULL REFERENCES calls(id),
                     created_at TEXT NOT NULL, author TEXT NOT NULL, markdown TEXT NOT NULL
@@ -62,6 +67,8 @@ class CallStore:
             columns = {row[1] for row in db.execute("PRAGMA table_info(segments)")}
             if "speaker" not in columns:
                 db.execute("ALTER TABLE segments ADD COLUMN speaker INTEGER")
+            if "speaker_name" not in columns:
+                db.execute("ALTER TABLE segments ADD COLUMN speaker_name TEXT")
         if os.name != "nt":
             self.path.chmod(0o600)
 
@@ -126,6 +133,11 @@ class CallStore:
             result["calendar_event"] = json.loads(result["calendar_event"]) if result["calendar_event"] else None
             result["segments"] = [dict(row) for row in db.execute(
                 "SELECT * FROM segments WHERE call_id=? ORDER BY start,id", (call_id,))]
+            result["speaker_names"] = [dict(row) for row in db.execute(
+                "SELECT source,speaker,name FROM speaker_names WHERE call_id=?", (call_id,))]
+            names = {(row['source'], row['speaker']): row['name'] for row in result['speaker_names']}
+            for segment in result['segments']:
+                segment['display_name'] = segment['speaker_name'] or names.get((segment['source'], segment['speaker'] or 0))
             result["analyses"] = [dict(row) for row in db.execute(
                 "SELECT * FROM analyses WHERE call_id=? ORDER BY id DESC", (call_id,))]
             return result
@@ -137,6 +149,27 @@ class CallStore:
                 db.execute("UPDATE calls SET title=? WHERE id=?", (title.strip()[:200] or "Untitled call", call_id))
             if notes is not None:
                 db.execute("UPDATE calls SET notes=? WHERE id=?", (notes[:20000], call_id))
+        return self.get(call_id)
+
+    def name_speaker(self, call_id, segment_id, name, scope='speaker'):
+        if not isinstance(name, str) or len(name) > 100 or any(ord(c) < 32 or ord(c) == 127 for c in name):
+            raise ValueError("Use a single-line name of at most 100 characters.")
+        if scope not in {'speaker', 'segment'}:
+            raise ValueError("Invalid naming scope")
+        name = name.strip()
+        self.get(call_id)
+        with self.connect() as db:
+            row = db.execute("SELECT * FROM segments WHERE call_id=? AND id=?", (call_id, segment_id)).fetchone()
+            if row is None:
+                raise KeyError("Segment not found")
+            if scope == 'segment':
+                db.execute("UPDATE segments SET speaker_name=? WHERE id=?", (name or None, segment_id))
+            else:
+                if row['speaker'] is None and row['source'] != 'microphone':
+                    raise ValueError("Assign uncertain speakers one line at a time.")
+                db.execute("INSERT INTO speaker_names(call_id,source,speaker,name) VALUES(?,?,?,?) "
+                           "ON CONFLICT(call_id,source,speaker) DO UPDATE SET name=excluded.name",
+                           (call_id, row['source'], row['speaker'] or 0, name))
         return self.get(call_id)
 
     def archive(self, call_id):
@@ -171,7 +204,8 @@ def transcript_markdown(call):
     lines = [f"# {call['title']}", "", f"Call ID: {call['id']}", f"Started: {call['started_at']}", ""]
     for segment in call["segments"]:
         seconds = int(segment["start"])
-        lines.append(f"[{seconds // 60:02}:{seconds % 60:02}] {('Speaker ' + str(segment['speaker'])) if segment.get('speaker') else labels[segment['source']]} (segment {segment['id']}): {segment['text']}")
+        label = segment.get('display_name') or (('Speaker ' + str(segment['speaker'])) if segment.get('speaker') else labels[segment['source']])
+        lines.append(f"[{seconds // 60:02}:{seconds % 60:02}] {label} (segment {segment['id']}): {segment['text']}")
     if call["notes"]:
         lines.extend(["", "## Notes", call["notes"]])
     return "\n".join(lines)

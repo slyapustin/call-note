@@ -1,3 +1,4 @@
+import {setupSpeakerNames,speakerLabel} from './speaker-names.js';
 import {captureSystemAudio} from './capture-source.js';
 import {setupIntroduction} from './introduction.js';
 import {setupSettings} from './settings.js';
@@ -32,10 +33,19 @@ function reportError(error, stage=capture?.errorStage||capture?.stage||health.st
 window.addEventListener('error',event=>reportError(event.error));
 window.addEventListener('unhandledrejection',event=>reportError(event.reason));
 function handle(fn) { return async (...args) => { try {await fn(...args);} catch(error) {reportError(error);notice(error.message);} }; }
+const speakerNames=setupSpeakerNames({getCurrent:()=>current,api,onSaved:call=>{
+  current=call;
+  $('transcript').replaceChildren(...call.segments.map(segment));
+}});
 function segment(row) {
   const entry = document.createElement('div'); entry.className='segment';
   const meta=document.createElement('div'); meta.className='meta';
-  const speaker=document.createElement('span'); speaker.className='speaker';if(row.speaker)speaker.classList.add(`voice-${(row.speaker-1)%4}`);speaker.textContent=row.speaker?`Speaker ${row.speaker}`:row.source==='system'?'Speaker uncertain':labels[row.source];
+  const speaker=document.createElement('button');speaker.type='button';speaker.id=`speaker-segment-${row.id}`;speaker.className='speaker speaker-edit';
+  if(row.speaker)speaker.classList.add(`voice-${(row.speaker-1)%4}`);
+  speaker.textContent=speakerLabel(row);speaker.disabled=current?.status==='recording';
+  speaker.title=speaker.disabled?'Save the call to name speakers':'Name or correct this speaker';
+  speaker.setAttribute('aria-label',`Name speaker at ${clock(row.start)}: ${speakerLabel(row)}`);
+  speaker.onclick=()=>speakerNames.open(row,speaker);
   const time=document.createElement('span');time.textContent=clock(row.start);
   const text=document.createElement('p');text.textContent=row.text;
   meta.append(speaker,time);entry.append(meta,text);return entry;

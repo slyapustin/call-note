@@ -57,3 +57,9 @@ The signed 0.2.14 app also satisfies the installed app’s designated signing re
 Apple also accepted DMG submission `eca537aa-d5ed-4d1b-89b3-feca6281a70c`. Both app and DMG passed stapler validation and Gatekeeper as Notarized Developer ID; `hdiutil verify` passed. The installer is 577,079,105 bytes, and the updater ZIP is 524,137,194 bytes.
 
 Published `v0.2.14` from `aa100a0` as GitHub Latest. All five uploaded asset SHA-256 values match local files; the public `releases/latest/download/latest-mac.yml` exactly matches the local manifest, and its ZIP SHA-512/size are verified. No install or quit/relaunch was performed on the owner’s installed app.
+
+## Unreleased speaker naming
+
+After saving a call, click a speaker label to name it throughout that call or correct only the selected line. Uncertain lines can only be assigned individually. Clearing a name removes that assignment; individual corrections take priority over shared speaker names. Names persist in the local call library and appear in text exports and MCP transcripts, never analytics. This does not recognize people across calls.
+
+The additive database migration backs up older libraries before adding speaker-name storage. Validation: 80 Python tests and 179 desktop tests pass, including migration, persistence, export, API validation and naming-dialog behavior. Native installed-app interaction and a packaged release have not been tested for this change.

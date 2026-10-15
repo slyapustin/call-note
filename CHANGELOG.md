@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Name speakers in saved calls, apply names throughout a call, or correct individual transcript lines. Names persist locally and appear in text exports and assistant transcripts; they are excluded from analytics.
+
 ## 0.2.14 — 2026-10-15
 
 - Add separate terms acceptance and Privacy settings. Optional usage analytics starts OFF and is enabled only by an explicit opt-in; accepting terms sends a disclosed minimal acceptance record. Existing saved calls remain accessible.

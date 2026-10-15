@@ -213,6 +213,17 @@ class Edit(BaseModel):
 def edit_call(call_id: str, edit: Edit):
     return store.update(call_id, edit.title, edit.notes)
 
+class SpeakerNameEdit(BaseModel):
+    name: str = Field(max_length=100)
+    scope: str = 'speaker'
+
+@app.patch('/api/calls/{call_id}/segments/{segment_id}/speaker')
+def name_speaker(call_id: str, segment_id: int, edit: SpeakerNameEdit):
+    try:
+        return store.name_speaker(call_id, segment_id, edit.name, edit.scope)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+
 @app.delete('/api/calls/{call_id}')
 def delete_call(call_id: str):
     try:

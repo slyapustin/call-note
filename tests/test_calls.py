@@ -244,3 +244,64 @@ def test_delete_api_rejects_active_call_and_requires_authentication(client):
     assert client.delete(url).json() == {'deleted': True}
     assert client.get(url).status_code == 404
     assert client.delete(url).status_code == 404
+
+
+def test_speaker_names_persist_and_export_without_merging_uncertain_lines(tmp_path):
+    store = CallStore(tmp_path)
+    call = store.create('Naming')
+    cid = call['id']
+    first = store.append(cid, 'system', 0, 4, 'First', 1)
+    second = store.append(cid, 'system', 4, 8, 'Second', 1)
+    unknown = store.append(cid, 'system', 8, 9, 'Unknown')
+    other_unknown = store.append(cid, 'system', 9, 10, 'Other unknown')
+    store.name_speaker(cid, first['id'], 'Alice')
+    store.name_speaker(cid, second['id'], 'Bob', 'segment')
+    store.name_speaker(cid, unknown['id'], 'Alice', 'segment')
+    saved = CallStore(tmp_path).get(cid)
+    assert [row['display_name'] for row in saved['segments']] == ['Alice', 'Bob', 'Alice', None]
+    assert 'Alice (segment' in transcript_markdown(saved)
+    assert 'Bob (segment' in transcript_markdown(saved)
+    with pytest.raises(ValueError):
+        store.name_speaker(cid, other_unknown['id'], 'Everyone')
+    store.name_speaker(cid, second['id'], '', 'segment')
+    assert store.get(cid)['segments'][1]['display_name'] == 'Alice'
+    store.name_speaker(cid, first['id'], '')
+    assert not store.get(cid)['segments'][0]['display_name']
+    other = store.create('Separate call')
+    separate = store.append(other['id'], 'system', 0, 5, 'Separate', 1)
+    assert not store.get(other['id'])['segments'][0]['display_name']
+    with pytest.raises(KeyError):
+        store.name_speaker(cid, separate['id'], 'Wrong call')
+    store.finish(cid, 10)
+    store.delete(cid)
+    with store.connect() as db:
+        assert db.execute('SELECT COUNT(*) FROM speaker_names WHERE call_id=?', (cid,)).fetchone()[0] == 0
+
+
+def test_speaker_name_api_validation_and_export(client):
+    call = call_app.store.create('API names')
+    row = call_app.store.append(call['id'], 'microphone', 0, 4, 'Hello')
+    path = f"/api/calls/{call['id']}/segments/{row['id']}/speaker"
+    assert client.patch(path, json={'name':'Sergey'}).status_code == 200
+    assert 'Sergey (segment' in client.get(f"/api/calls/{call['id']}/export").text
+    for body in [{'name':'a\nb'}, {'name':'x'*101}, {'name':'Name', 'scope':'all'}, {'name':None}]:
+        assert client.patch(path, json=body).status_code == 422
+    assert client.patch(path, json={'name':'No'}, headers={'x-call-token':''}).status_code == 401
+
+
+def test_speaker_names_migration_backs_up_old_database(tmp_path):
+    import sqlite3
+    store = CallStore(tmp_path)
+    call = store.create('Existing')
+    store.append(call['id'], 'system', 0, 5, 'Keep me', 2)
+    with sqlite3.connect(store.path) as db:
+        db.execute('ALTER TABLE segments DROP COLUMN speaker_name')
+        db.execute('DROP TABLE speaker_names')
+    reopened = CallStore(tmp_path)
+    backups = list((tmp_path / 'backups').glob('calls-before-speaker-names-*.sqlite3'))
+    assert len(backups) == 1
+    assert reopened.get(call['id'])['segments'][0]['text'] == 'Keep me'
+    with sqlite3.connect(backups[0]) as db:
+        assert 'speaker_name' not in {row[1] for row in db.execute('PRAGMA table_info(segments)')}
+    CallStore(tmp_path)
+    assert len(list((tmp_path / 'backups').glob('*.sqlite3'))) == 1
