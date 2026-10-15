@@ -137,9 +137,9 @@ class Capture {
         if(data.type==='segment') {health.segmentsReceived++;current.segments.push(data.segment);current.segments.sort((a,b)=>a.start-b.start||a.id-b.id);$('transcript').replaceChildren(...current.segments.map(segment));$('segment-count').textContent=current.segments.length;delete this.partial[data.segment.source];this.renderPartials();}
         if(data.type==='partial') {this.partial[data.source]=data.text;this.renderPartials();}
         if(data.type==='complete') {show(data.call);this.completed?.();}
-        if(data.type==='error') {clearTimeout(timeout);const error=Error(data.message);reportError(error,this.stage);reject(error);notice(data.message);this.failed?.(error);if(this.active)finish(false);}
+        if(data.type==='error') {clearTimeout(timeout);const error=Object.assign(Error(data.message),{name:['TimeoutError','RuntimeError','ValueError','OSError','MemoryError'].includes(data.errorName)?data.errorName:'Error',code:['CAPTURE_TIMEOUT','CAPTURE_AUDIO_INVALID','CAPTURE_SERVICE'].includes(data.code)?data.code:'CAPTURE_SERVICE'});reportError(error,this.stage);reject(error);notice(data.message);this.failed?.(error);if(this.active)finish(false,data.message);}
       };
-      this.socket.onclose=()=> {if(!this.stopping&&this.active){const error=Object.assign(Error('Recording connection closed.'),{code:'CAPTURE_CONNECTION'});reportError(error,this.stage);notice('Recording connection closed. Saved text is retained; the call is marked interrupted.');finish(false);} };
+      this.socket.onclose=()=> {if(!this.stopping&&this.active){const error=Object.assign(Error('Recording connection closed.'),{code:'CAPTURE_CONNECTION'});reportError(error,this.stage);finish(false,'Recording connection closed. Saved text is retained; the call is marked interrupted.');} };
     });
     $('levels').replaceChildren();
     for(const source of this.streams) {
@@ -162,14 +162,14 @@ class Capture {
   }
   sendAudioFrame(source,data,meter) {
     if(this.socket.readyState!==WebSocket.OPEN)return;
-    if(this.socket.bufferedAmount>1024*1024){health.backpressureStops++;const error=Object.assign(Error('Transcription is falling behind.'),{code:'CAPTURE_BACKPRESSURE'});reportError(error,this.stage);reportHealth();notice('Transcription is falling behind. The call was stopped to avoid silently losing audio.');finish(false);return;}
+    if(this.socket.bufferedAmount>1024*1024){health.backpressureStops++;const error=Object.assign(Error('Transcription is falling behind.'),{code:'CAPTURE_BACKPRESSURE'});reportError(error,this.stage);reportHealth();finish(false,'Transcription is falling behind. The call was stopped to avoid silently losing audio.');return;}
     const floats=new Float32Array(data);const rms=Math.sqrt(floats.reduce((sum,v)=>sum+v*v,0)/floats.length);meter.value=rms;
     if(rms>.0001){this.meters[source].lastSignal=Date.now();this.meters[source].heard=true;health[source==='microphone'?'microphoneHeard':'systemHeard']=true;}
     const frame=new Uint8Array(data.byteLength+1);frame[0]=source==='microphone'?0:1;frame.set(new Uint8Array(data),1);this.socket.send(frame);health.framesSent++;
   }
   trackEnded(source) {
     if(this.stopping)return;
-    health.trackEnds++;const error=Object.assign(Error('Audio capture track ended.'),{code:'CAPTURE_ENDED'});reportError(error,this.stage);reportHealth();notice(`${labels[source]} audio capture ended. The call has been stopped.`);finish(true);
+    health.trackEnds++;const error=Object.assign(Error('Audio capture track ended.'),{code:'CAPTURE_ENDED'});reportError(error,this.stage);reportHealth();finish(true,`${labels[source]} audio capture ended. The call has been stopped.`);
   }
   renderPartials() { $('partials').replaceChildren(...Object.entries(this.partial).map(([source,text])=>{const p=document.createElement('div');p.className='partial';p.textContent=`${labels[source]}: ${text}`;return p;})); }
   async stop(graceful=true) {
@@ -177,7 +177,7 @@ class Capture {
     try {
       if(graceful&&this.socket?.readyState===WebSocket.OPEN) {
         await Promise.all(this.nodes.map(node=>new Promise(resolve=>{node.flushed=resolve;node.port.postMessage('stop');setTimeout(resolve,1500);})));
-        await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(Error('Finalization timed out; saved segments are retained.')),45000);this.completed=()=>{clearTimeout(timeout);resolve();};this.failed=error=>{clearTimeout(timeout);reject(error);};this.socket.send(JSON.stringify({type:'stop'}));});
+        await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(Object.assign(Error('Finalization timed out; saved segments are retained.'),{code:'CAPTURE_FINALIZE_TIMEOUT'})),45000);this.completed=()=>{clearTimeout(timeout);resolve();};this.failed=error=>{clearTimeout(timeout);reject(error);};this.socket.send(JSON.stringify({type:'stop'}));});
       }
     } finally {this.release();}
   }
@@ -192,9 +192,9 @@ class Capture {
     this.stage='stopped';health.stage='stopped';reportHealth();
   }
 }
-async function finish(graceful=true) {
+async function finish(graceful=true, interruptionMessage='') {
   if(!capture||capture.stopping)return;
-  const recording=capture;window.callDesk.menuState({phase:'saving'});notice();$('stop').disabled=true;$('stop').textContent='Saving…';
+  const recording=capture;window.callDesk.menuState({phase:'saving'});notice(interruptionMessage);$('stop').disabled=true;$('stop').textContent='Saving…';
   try {await recording.stop(graceful);if(graceful)usage('call_completed',{durationMinutes:Math.min(1440,Math.round((Date.now()-recording.started)/60000))});} catch(error){reportError(error,'saving');notice(error.message);} finally {capture=null;deletion?.render();$('stop').disabled=false;$('stop').textContent='■ Stop & save';await library();await status();if(current)show(await api('/calls/'+current.id));}
 }
 async function startCapture() {

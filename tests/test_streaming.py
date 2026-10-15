@@ -50,3 +50,25 @@ def test_failed_late_speaker_turn_does_not_publish_partial_phrase():
     assert finals[0]["text"] == "And um"
     assert "speaker" not in finals[0]
     assert [event["type"] for event in live.events] == ["warning", "final"]
+
+
+def test_finite_capture_peaks_are_limited_without_interrupting_stream():
+    live = LiveTranscriber(Model(), [])
+    received = []
+    live.session.feed = lambda audio: received.append(audio.copy())
+    live.feed(np.array([1.02, -1.2, 0.25, 0.0], dtype='<f4').tobytes())
+    live.feed(np.array([0.1], dtype='<f4').tobytes())
+    np.testing.assert_array_equal(received[0], [1.0, -1.0, 0.25, 0.0])
+    assert live.samples == 5
+    assert len(received) == 2
+
+
+def test_nonfinite_capture_is_rejected_before_decoder():
+    import pytest
+    from streaming import InvalidAudioError
+    for value in [float('nan'), float('inf'), -float('inf')]:
+        live = LiveTranscriber(Model(), [])
+        live.session.feed = lambda audio: pytest.fail('Invalid audio reached decoder')
+        with pytest.raises(InvalidAudioError):
+            live.feed(np.array([value], dtype='<f4').tobytes())
+        assert live.samples == 0

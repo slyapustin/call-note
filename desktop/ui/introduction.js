@@ -27,8 +27,8 @@ export function setupIntroduction({bridge, version, canOpen, onError}) {
   function render() {
     const isTour = kind === 'tour';
     get('eyebrow').textContent = isTour ? `A quick tour · ${step + 1} of ${tour.length}` : `What’s new in Call Note ${version}`;
-    get('title').textContent = isTour ? tour[step].title : 'Put names to the conversation.';
-    get('description').textContent = isTour ? tour[step].description : 'Click a speaker label in a saved call to name that speaker or correct a single line. Names stay with the call and appear in exports.';
+    get('title').textContent = isTour ? tour[step].title : 'Clearer recording recovery.';
+    get('description').textContent = isTour ? tour[step].description : 'Audio peaks no longer end an otherwise valid recording. If recording is interrupted, its explanation stays visible and diagnostics distinguish more failure types.';
     get('detail').textContent = isTour ? tour[step].detail : 'This screen appears once after each app update. Reopen it anytime from Help → What’s New.';
     for (const preview of dialog.querySelectorAll('[data-preview]')) preview.hidden = preview.dataset.preview !== (isTour ? tour[step].preview : 'news');
     get('back').hidden = !isTour || step === 0;

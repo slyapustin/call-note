@@ -18,7 +18,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app import ROOT, engine, engine_call, local_requests, status
 from call_store import CallStore, transcript_markdown
 from diarization import SpeakerDiagnostics
-from streaming import LiveTranscriber
+from streaming import LiveTranscriber, InvalidAudioError
 
 TOKEN = os.environ.get('CALL_DESK_TOKEN', secrets.token_urlsafe(32))
 store = None
@@ -353,7 +353,8 @@ async def record(socket: WebSocket):
         pass
     except Exception as exc:
         try:
-            await socket.send_json({'type': 'error', 'message': str(exc) or 'Recording interrupted.'})
+            code = 'CAPTURE_TIMEOUT' if isinstance(exc, TimeoutError) else 'CAPTURE_AUDIO_INVALID' if isinstance(exc, InvalidAudioError) else 'CAPTURE_SERVICE'
+            await socket.send_json({'type': 'error', 'code': code, 'errorName': 'ValueError' if isinstance(exc, InvalidAudioError) else type(exc).__name__, 'message': str(exc) or ('Recording timed out. The call was interrupted; saved text is retained.' if code == 'CAPTURE_TIMEOUT' else 'Recording interrupted.')})
             await socket.close(code=1011)
         except (RuntimeError, WebSocketDisconnect):
             pass

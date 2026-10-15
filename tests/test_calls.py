@@ -305,3 +305,21 @@ def test_speaker_names_migration_backs_up_old_database(tmp_path):
         assert 'speaker_name' not in {row[1] for row in db.execute('PRAGMA table_info(segments)')}
     CallStore(tmp_path)
     assert len(list((tmp_path / 'backups').glob('*.sqlite3'))) == 1
+
+
+@pytest.mark.parametrize('failure,code', [(TimeoutError(), 'CAPTURE_TIMEOUT'), (RuntimeError('synthetic failure'), 'CAPTURE_SERVICE'), (call_app.InvalidAudioError('invalid input'), 'CAPTURE_AUDIO_INVALID')])
+def test_recording_error_has_fixed_diagnostic_code(client, monkeypatch, failure, code):
+    class FailingLive(FakeLive):
+        def feed(self, data):
+            raise failure
+    monkeypatch.setattr(call_app, 'LiveTranscriber', FailingLive)
+    with client.websocket_connect('/api/record', headers={'origin':'http://testserver'}) as ws:
+        ws.send_json({'token':'test-token','sources':['microphone']})
+        cid = ws.receive_json()['call']['id']
+        ws.send_bytes(b'\x00' + struct.pack('<f', .1))
+        event = ws.receive_json()
+        assert event['type'] == 'error'
+        assert event['code'] == code
+        assert event['message']
+    assert call_app.store.get(cid)['status'] == 'interrupted'
+    assert not call_app.engine.busy

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.16 — 2026-10-15
+
+- Limit finite audio peaks before decoding so an out-of-range sample does not end a call. Invalid non-finite input is still rejected.
+- Keep interruption messages visible and export fixed diagnostic codes for service errors, timeouts and invalid audio, without raw error messages or call content.
+
 ## 0.2.15 — 2026-10-15
 
 - Name speakers in saved calls, apply names throughout a call, or correct individual transcript lines. Names persist locally and appear in text exports and assistant transcripts; they are excluded from analytics.

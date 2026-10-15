@@ -132,3 +132,14 @@ test('capture and backend snapshots exclude extra fields and malformed values', 
   assert.doesNotMatch(report,/secret-person|Infinity|"trackEnds"|"speaker_uncertain"/);
   assert.match(diagnostics.exportReport(),/"available":false/);
 });
+
+test('recording failure codes survive sanitization without private messages',t=>{
+  const {diagnostics}=fixture(t);
+  for(const code of ['CAPTURE_TIMEOUT','CAPTURE_AUDIO_INVALID','CAPTURE_SERVICE','CAPTURE_FINALIZE_TIMEOUT']) {
+    diagnostics.record('renderer',{name:'Error',code,stage:'recording',message:'Private transcript and device information'});
+    const event=diagnostics.events.at(-1);
+    assert.equal(event.code,code);
+    assert.equal(event.stage,'recording');
+    assert.ok(!JSON.stringify(event).includes('Private'));
+  }
+});

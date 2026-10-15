@@ -2,6 +2,10 @@
 import time
 
 
+class InvalidAudioError(ValueError):
+    pass
+
+
 class LiveTranscriber:
     def __init__(self, model, hotwords, speakers=None, diagnostics=None):
         from fermion._speech.live import LiveSession
@@ -62,8 +66,11 @@ class LiveTranscriber:
         import numpy as np
 
         audio = np.frombuffer(data, dtype="<f4").copy()
-        if not np.isfinite(audio).all() or (np.abs(audio) > 1.01).any():
-            raise ValueError("Audio must contain finite float32 samples between -1 and 1.")
+        if not np.isfinite(audio).all():
+            raise InvalidAudioError("Audio must contain finite float32 samples.")
+        # Float capture and resampling can overshoot full scale. Limit peaks
+        # before inference instead of ending an otherwise valid recording.
+        np.clip(audio, -1.0, 1.0, out=audio)
         self.samples += len(audio)
         self.session.feed(audio)
         if self.speakers is not None and any(event['type'] == 'partial' for event in self.events):

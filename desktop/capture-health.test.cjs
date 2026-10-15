@@ -54,3 +54,19 @@ test('track endings caused by release do not count as unexpected capture failure
   const f=fixture();f.capture.stopping=true;f.capture.trackEnded('system');
   assert.equal(f.context.getHealth().trackEnds,0);assert.deepEqual(f.errors,[]);assert.deepEqual(f.finishes,[]);
 });
+
+test('stopping an interrupted call retains its explanation while refreshing saved text',async()=>{
+  const notices=[],elements=new Map();
+  const context=vm.createContext({
+    capture:{stopping:false,started:Date.now(),stop:async()=>{}},
+    current:{id:'example'},deletion:{render(){}},
+    window:{callDesk:{menuState(){}}},
+    $:id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);},
+    notice:message=>notices.push(message),library:async()=>{},status:async()=>{},
+    api:async()=>({id:'example'}),show(){},usage(){},reportError(){},
+  });
+  vm.runInContext(source.slice(source.indexOf('async function finish('),source.indexOf('\nasync function startCapture(')),context);
+  await context.finish(false,'Recording timed out. Saved text is retained.');
+  assert.deepEqual(notices,['Recording timed out. Saved text is retained.']);
+  assert.equal(context.capture,null);
+});
