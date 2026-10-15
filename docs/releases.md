@@ -53,3 +53,7 @@ Validation passed: 176 desktop tests, 77 Python tests, 16 Worker/D1 tests and Wo
 To preserve the installed app and saved calls, do not use a same-account app launch for an isolated updater test: `main.cjs` pins user data to `appData/CallDesk`, and electron-updater uses the home-directory cache independently. Validate an actual 0.2.13 → 0.2.14 replacement/relaunch in a disposable macOS account or VM. Artifact/signature/feed checks alone do not establish that full upgrade.
 
 The signed 0.2.14 app also satisfies the installed app’s designated signing requirement (bundle identifier `local.calldesk.preview`, Developer ID team `4H3K6D457W`). Apple accepted the app notarization submission `f1e47aaa-5c7b-4705-8fbf-6d747cd87b7e`; the app was stapled successfully.
+
+Apple also accepted DMG submission `eca537aa-d5ed-4d1b-89b3-feca6281a70c`. Both app and DMG passed stapler validation and Gatekeeper as Notarized Developer ID; `hdiutil verify` passed. The installer is 577,079,105 bytes, and the updater ZIP is 524,137,194 bytes.
+
+Published `v0.2.14` from `aa100a0` as GitHub Latest. All five uploaded asset SHA-256 values match local files; the public `releases/latest/download/latest-mac.yml` exactly matches the local manifest, and its ZIP SHA-512/size are verified. No install or quit/relaunch was performed on the owner’s installed app.
