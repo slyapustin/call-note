@@ -72,3 +72,102 @@ def test_nonfinite_capture_is_rejected_before_decoder():
         with pytest.raises(InvalidAudioError):
             live.feed(np.array([value], dtype='<f4').tobytes())
         assert live.samples == 0
+
+
+class CountingModel:
+    def __init__(self):
+        self.audio = []
+
+    def transcribe_array(self, audio, hotwords):
+        self.audio.append(audio.copy())
+        return "A complete phrase", .001, {}
+
+
+def feed_seconds(live, seconds, value):
+    events = []
+    for _ in range(round(seconds * 20)):
+        events.extend(live.feed(np.full(800, value, dtype='<f4').tobytes()))
+    return events
+
+
+def test_complete_phrase_waits_for_pause_without_partial_inference():
+    model = CountingModel()
+    live = LiveTranscriber(model, [])
+    assert feed_seconds(live, 2., .1) == []
+    assert feed_seconds(live, 1.15, 0.) == []
+    assert not model.audio
+    finals = feed_seconds(live, .05, 0.)
+    assert [event['type'] for event in finals] == ['final']
+    assert len(model.audio) == 1
+    assert len(model.audio[0]) == 51200
+    assert finals[0]['start'] == 0.
+    assert finals[0]['end'] == 2.
+    live.finish()
+    assert len(model.audio) == 1
+
+
+def test_long_monologue_cap_and_stop_preserve_every_sample_and_offset():
+    model = CountingModel()
+    live = LiveTranscriber(model, [])
+    # One unusually large feed also exercises timestamps for internal cuts.
+    audio = np.full(41 * 16000, .1, dtype='<f4')
+    events = live.feed(audio.tobytes())
+    live.finish()
+    events.extend(live.events)
+    assert [(event['start'], event['end']) for event in events] == [(0.,20.),(20.,40.),(40.,41.)]
+    assert [len(block) for block in model.audio] == [320000,320000,16000]
+    np.testing.assert_array_equal(np.concatenate(model.audio), audio)
+    assert live.settled_seconds == 41.
+    live.events = []
+    live.finish()
+    assert live.events == []
+    assert len(model.audio) == 3
+
+
+def test_idle_preroll_is_bounded_and_preserves_absolute_phrase_time():
+    model = CountingModel()
+    live = LiveTranscriber(model, [])
+    feed_seconds(live, 65., 0.)
+    assert not model.audio
+    assert live.session._samples == 8000
+    assert sum(len(block) for block in live.session._blocks) == 8000
+    assert live.settled_seconds == 64.5
+    feed_seconds(live, 1., .1)
+    assert live.settled_seconds == 64.5
+    live.finish()
+    assert len(model.audio[0]) == 24000
+    assert live.events[0]['start'] == 65.
+    assert live.events[0]['end'] == 66.
+    assert live.settled_seconds == 66.
+
+
+def test_repeated_complete_phrases_remain_separate_after_silence():
+    model = CountingModel()
+    live = LiveTranscriber(model, [])
+    finals = []
+    for _ in range(2):
+        finals.extend(feed_seconds(live, 1., .1))
+        finals.extend(feed_seconds(live, 1.2, 0.))
+    assert len(finals) == 2
+    assert finals[0]['text'] == finals[1]['text']
+    assert finals[0]['end'] < finals[1]['start']
+    assert live.session.transcript == 'A complete phrase A complete phrase'
+
+
+
+def test_short_pause_keeps_context_together_and_idle_stop_never_decodes():
+    model = CountingModel()
+    live = LiveTranscriber(model, [])
+    feed_seconds(live, 3., 0.)
+    live.finish()
+    assert model.audio == []
+    assert live.settled_seconds == 3.
+    feed_seconds(live, 1., .1)
+    feed_seconds(live, .8, 0.)
+    feed_seconds(live, 1., .1)
+    assert model.audio == []
+    live.finish()
+    assert len(model.audio) == 1
+    assert len(model.audio[0]) == 44800
+    assert live.events[0]['start'] == 3.
+    assert live.events[0]['end'] == 5.8

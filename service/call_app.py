@@ -22,6 +22,8 @@ from call_store import CallStore, transcript_markdown
 from call_audio import CallAudio, audio_path
 from diarization import SpeakerDiagnostics
 from streaming import LiveTranscriber, InvalidAudioError
+from echo_detection import EchoDetector
+from transcript_merge import TranscriptMerge
 
 TOKEN = os.environ.get('CALL_DESK_TOKEN', secrets.token_urlsafe(32))
 AUDIO_TOKEN = hashlib.sha256(('call-audio:' + TOKEN).encode()).hexdigest()
@@ -296,20 +298,42 @@ async def record(socket: WebSocket):
     completed = False
     diagnostics = None
     recording_audio = None
+    echo = EchoDetector()
+    merger = None
 
-    async def publish(source, events):
+    def queue_events(source, events):
+        controls = []
         for event in events:
             if event['type'] == 'final':
-                end = offsets[source] + event.get('end', sessions[source].samples / 16000)
-                start = offsets[source] + event['start'] if 'start' in event else boundaries[source]
-                segment = store.append(call['id'], source, start, end, event['text'], event.get('speaker'))
+                end = offsets.get(source, 0) + event.get('end', sessions[source].samples / 16000)
+                start = offsets.get(source, 0) + event['start'] if 'start' in event else boundaries[source]
+                merger.add(dict(source=source, start=start, end=end, text=event['text'], speaker=event.get('speaker')))
                 boundaries[source] = end
-                if segment:
-                    await socket.send_json({'type': 'segment', 'segment': segment})
             elif event['type'] == 'warning':
-                await socket.send_json(event)
+                controls.append(event)
             elif event['type'] == 'partial':
-                await socket.send_json({'type': 'partial', 'source': source, 'text': event['text']})
+                controls.append({'type': 'partial', 'source': source, 'text': event['text']})
+        return controls
+
+    def persist_ready(force=False):
+        watermark = min((offsets.get(source, 0) + getattr(session, 'settled_seconds', 0)
+                         for source, session in sessions.items()), default=0)
+        rows = []
+        for row in merger.drain(watermark, force):
+            saved = store.append(call['id'], row['source'], row['start'], row['end'], row['text'], row['speaker'])
+            if saved:
+                rows.append(saved)
+        return rows
+
+    async def publish(source, events, force=False):
+        controls = queue_events(source, events)
+        # Save the entire ready batch before sending: a closed socket must not
+        # discard later rows from the same finalized phrase.
+        rows = persist_ready(force)
+        for event in controls:
+            await socket.send_json(event)
+        for row in rows:
+            await socket.send_json({'type': 'segment', 'segment': row})
 
     try:
         config = await asyncio.wait_for(socket.receive_json(), timeout=10)
@@ -333,6 +357,7 @@ async def record(socket: WebSocket):
             recording_audio = CallAudio(store.directory, call['id'], sources)
         global latest_diagnostics, latest_has_call
         diagnostics = latest_diagnostics = SpeakerDiagnostics()
+        merger = TranscriptMerge(echo, len(sources) == 2, diagnostics)
         latest_has_call = True
         persist_diagnostics(store.directory, diagnostics, True)
         started = time.monotonic()
@@ -366,13 +391,18 @@ async def record(socket: WebSocket):
                     raise ValueError('This preview supports calls up to four hours.')
                 if recording_audio:
                     recording_audio.write(source, data[1:], offsets[source])
-                await publish(source, await engine_call(sessions[source].feed, data[1:]))
+                audio_start = offsets[source] + sessions[source].samples / 16000
+                events = await engine_call(sessions[source].feed, data[1:])
+                echo.add(source, data[1:], audio_start)
+                await publish(source, events)
             elif json.loads(message.get('text', '{}')) == {'type': 'stop'}:
                 for source, session in sessions.items():
                     offsets.setdefault(source, 0)
                     await engine_call(session.finish)
                     events, session.events = session.events, []
                     await publish(source, events)
+                for segment in persist_ready(force=True):
+                    await socket.send_json({'type': 'segment', 'segment': segment})
                 if recording_audio:
                     recording_audio.close()
                     recording_audio = None
@@ -401,15 +431,12 @@ async def record(socket: WebSocket):
             for source, session in sessions.items():
                 try:
                     await engine_call(session.finish)
-                    for event in session.events:
-                        if event['type'] == 'final':
-                            end = offsets.get(source, 0) + event.get('end', session.samples / 16000)
-                            start = offsets.get(source, 0) + event['start'] if 'start' in event else boundaries[source]
-                            store.append(call['id'], source, start, end, event['text'], event.get('speaker'))
-                            boundaries[source] = end
+                    queue_events(source, session.events)
                     session.events = []
                 except Exception:
                     pass
+            if merger is not None:
+                persist_ready(force=True)
             store.finish(call['id'], time.monotonic()-started, 'interrupted')
         if call and diagnostics is not None:
             persist_diagnostics(store.directory, diagnostics, True)

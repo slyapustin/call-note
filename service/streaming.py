@@ -1,4 +1,4 @@
-"""Adapter for Fermion's official rolling partial/final decoder."""
+"""Bounded phrase decoding with complete context instead of rolling drafts."""
 import time
 
 
@@ -6,10 +6,83 @@ class InvalidAudioError(ValueError):
     pass
 
 
+class PhraseSession:
+    """Keep short idle pre-roll; decode once at a pause, cap, or explicit stop."""
+    RATE = 16000
+    SILENCE_SAMPLES = 19200  # 1.2 seconds
+    MAX_SAMPLES = 320000  # 20 seconds
+    PREROLL_SAMPLES = 8000  # Half a second
+
+    def __init__(self, speech, on_final):
+        self.speech = speech
+        self.on_final = on_final
+        self.finals = []
+        self.total_samples = 0
+        self._reset()
+
+    def _reset(self):
+        from collections import deque
+        self._blocks = deque()
+        self._samples = 0
+        self._voiced = False
+        self._last_voice = 0
+        self._peak_rms = 0.
+
+    def feed(self, audio):
+        import numpy as np
+        cursor = 0
+        while cursor < len(audio):
+            count = min(800, len(audio) - cursor, self.MAX_SAMPLES - self._samples)
+            block = audio[cursor:cursor + count].copy()
+            cursor += count
+            self.total_samples += count
+            self._blocks.append(block)
+            self._samples += count
+            rms = float(np.sqrt(np.mean(block * block)))
+            self._peak_rms = max(self._peak_rms, rms)
+            if rms > max(.004, .18 * self._peak_rms):
+                self._voiced = True
+                self._last_voice = self._samples
+            if self._voiced:
+                if (self._samples - self._last_voice >= self.SILENCE_SAMPLES
+                        or self._samples >= self.MAX_SAMPLES):
+                    self._finalize()
+            else:
+                # Discard only known idle audio, without moving the clock.
+                excess = self._samples - self.PREROLL_SAMPLES
+                while excess > 0:
+                    first = self._blocks.popleft()
+                    removed = min(excess, len(first))
+                    if removed < len(first):
+                        self._blocks.appendleft(first[removed:].copy())
+                    self._samples -= removed
+                    excess -= removed
+
+    def _finalize(self):
+        import numpy as np
+        audio = np.concatenate(self._blocks)
+        # Reset before inference so a failing decode cannot be retried at stop.
+        self._reset()
+        text, _, _ = self.speech.transcribe_array(audio)
+        text = text.strip()
+        if text:
+            self.finals.append(text)
+            self.on_final(text)
+
+    def finish(self):
+        if self._voiced:
+            self._finalize()
+        else:
+            self._reset()
+        return self.transcript
+
+    @property
+    def transcript(self):
+        return " ".join(self.finals)
+
+
 class LiveTranscriber:
     def __init__(self, model, hotwords, speakers=None, diagnostics=None):
-        from fermion._speech.live import LiveSession
-
         self.speakers = speakers
         self.diagnostics = diagnostics or getattr(speakers, 'diagnostics', None)
         self.last_audio = None
@@ -22,7 +95,13 @@ class LiveTranscriber:
         self.events = []
         self.last_bounds = (0.0, 0.0)
         self.started = time.perf_counter()
-        self.session = LiveSession(self, on_partial=self.partial, on_final=self.final)
+        self.session = PhraseSession(self, on_final=self.final)
+
+    @property
+    def settled_seconds(self):
+        # Pending pre-roll can still appear in a future diarized turn. Keep it
+        # behind the watermark even when the buffer has not detected speech.
+        return (self.session.total_samples - self.session._samples) / 16000
 
     def transcribe_array(self, audio):
         import numpy as np
@@ -30,10 +109,11 @@ class LiveTranscriber:
         blocks = [audio[i:i + 800] for i in range(0, len(audio), 800)]
         levels = np.asarray([np.sqrt(np.mean(block * block)) for block in blocks])
         voiced = np.flatnonzero(levels > max(0.004, 0.18 * float(levels.max(initial=0))))
-        base = max(0, self.samples - len(audio)) / 16000
+        end_samples = self.session.total_samples
+        base = max(0, end_samples - len(audio)) / 16000
         self.last_audio = audio
         self.audio_base = base
-        self.last_bounds = (base + voiced[0] * .05, base + min(len(audio), (voiced[-1] + 1) * 800) / 16000) if len(voiced) else (base, self.samples / 16000)
+        self.last_bounds = (base + voiced[0] * .05, base + min(len(audio), (voiced[-1] + 1) * 800) / 16000) if len(voiced) else (base, end_samples / 16000)
         result = self.model.transcribe_array(audio, hotwords=self.hotwords)
         self.decode_seconds += result[1]
         return result
@@ -73,10 +153,6 @@ class LiveTranscriber:
         np.clip(audio, -1.0, 1.0, out=audio)
         self.samples += len(audio)
         self.session.feed(audio)
-        if self.speakers is not None and any(event['type'] == 'partial' for event in self.events):
-            # The pinned Fermion rolling decoder exposes no cadence option. Give
-            # speaker inference room by spacing system-audio drafts one second apart.
-            self.session._next_partial = self.session._samples + 16000
         events, self.events = self.events, []
         return events
 

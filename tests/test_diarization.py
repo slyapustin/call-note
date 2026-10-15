@@ -46,11 +46,11 @@ def test_live_splits_final_phrase_without_losing_timing():
             return ('First voice. Second voice.', .001, {})
     class Speakers:
         def transcribe(self, audio, model, hotwords, fallback):
-            return [dict(start=2., end=2.5, speaker=1, text='First voice.'),
-                    dict(start=2.5, end=3., speaker=2, text='Second voice.')]
+            return [dict(start=.5, end=1., speaker=1, text='First voice.'),
+                    dict(start=1., end=1.5, speaker=2, text='Second voice.')]
     live = LiveTranscriber(Model(), [], Speakers())
     events = []
-    for value, count in [(0., 40), (.1, 20), (0., 20)]:
+    for value, count in [(0., 40), (.1, 20), (0., 24)]:
         for _ in range(count):
             events.extend(live.feed(np.full(800, value, dtype='<f4').tobytes()))
     finals = [e for e in events if e['type'] == 'final']

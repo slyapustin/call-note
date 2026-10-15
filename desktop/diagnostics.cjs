@@ -9,7 +9,7 @@ const CODES = new Set(['CAPTURE_TIMEOUT', 'CAPTURE_AUDIO_INVALID', 'CAPTURE_SERV
 const CATEGORIES = new Set(['clipboard-denied', 'permission-denied', 'network', 'timeout', 'missing-file', 'disk-full', 'update-signature', 'update-feed', 'service-exit', 'error']);
 const STAGES = new Set(['idle','prepare','microphone','system','calendar','connect','worklet','recording','saving','stopped','error']);
 const REASONS = new Set(['clean-exit','abnormal-exit','killed','crashed','oom','launch-failed','integrity-failure']);
-const COUNTERS = ['processed_phrases','speaker_known_matches','speaker_new_identities','speaker_uncertain','diarization_failures','overlap_intervals','streaming_finals'];
+const COUNTERS = ['processed_phrases','speaker_known_matches','speaker_new_identities','speaker_uncertain','diarization_failures','overlap_intervals','streaming_finals','echo_duplicates_suppressed'];
 const integer = value => Number.isSafeInteger(value) && value >= 0 && value <= 2147483647;
 function captureHealth(value = {}) {
   value = value || {};

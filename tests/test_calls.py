@@ -207,7 +207,7 @@ def test_live_phrase_timestamps_exclude_idle_silence():
         def transcribe_array(self,audio,hotwords):return ('Test phrase.',.001,{})
     session=LiveTranscriber(Model(),[])
     events=[]
-    for value,blocks in [(0.,40),(.1,20),(0.,20)]:
+    for value,blocks in [(0.,40),(.1,20),(0.,24)]:
         for _ in range(blocks):events.extend(session.feed(np.full(800,value,dtype='<f4').tobytes()))
     final=[event for event in events if event['type']=='final'][0]
     assert final['start']==pytest.approx(2.)
@@ -367,3 +367,45 @@ def test_interrupted_call_retains_incrementally_saved_audio(client,monkeypatch):
     saved=call_app.store.get(cid)
     assert saved['status']=='interrupted'
     assert saved['audio']['bytes']>=44+1600
+
+
+def test_cross_source_echo_is_saved_once_after_both_finals(client, monkeypatch):
+    import numpy as np
+
+    class EchoLive:
+        def __init__(self, *_):
+            self.samples = 0
+            self.events = []
+            self.done = False
+        @property
+        def settled_seconds(self):
+            return self.samples / 16000 if self.done else 0
+        def feed(self, data):
+            self.samples += len(data) // 4
+            if self.samples >= 32000 and not self.done:
+                self.done = True
+                return [dict(type='final', text='Hello everyone how are you doing today', start=0., end=2.)]
+            return []
+        def finish(self):
+            return {}
+
+    monkeypatch.setattr(call_app, 'LiveTranscriber', EchoLive)
+    audio = np.random.default_rng(42).normal(0, .1, 32000).astype('<f4')
+    with client.websocket_connect('/api/record', headers={'origin':'http://testserver'}) as ws:
+        ws.send_json({'token':'test-token','sources':['microphone','system']})
+        call_id = ws.receive_json()['call']['id']
+        for i in range(0, len(audio), 800):
+            for channel in (0, 1):
+                ws.send_bytes(bytes([channel]) + audio[i:i+800].tobytes())
+        ws.send_json({'type':'stop'})
+        messages = []
+        while True:
+            message = ws.receive_json()
+            messages.append(message)
+            if message['type'] == 'complete':
+                break
+        assert len(message['call']['segments']) == 1
+        assert message['call']['segments'][0]['source'] == 'system'
+        assert sum(row['type'] == 'segment' for row in messages) == 1
+    assert len(client.get('/api/calls/'+call_id).json()['segments']) == 1
+    assert call_app.latest_diagnostics.snapshot()['echo_duplicates_suppressed'] == 1

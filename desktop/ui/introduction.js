@@ -27,8 +27,8 @@ export function setupIntroduction({bridge, version, canOpen, onError}) {
   function render() {
     const isTour = kind === 'tour';
     get('eyebrow').textContent = isTour ? `A quick tour · ${step + 1} of ${tour.length}` : `What’s new in Call Note ${version}`;
-    get('title').textContent = isTour ? tour[step].title : 'Fewer controls. Your recording, ready.';
-    get('description').textContent = isTour ? tour[step].description : 'Audio now saves locally by default. Change this in Recording options, or mute your microphone in Call Note during a call. Meeting-app mute does not mute Call Note.';
+    get('title').textContent = isTour ? tour[step].title : 'A little more patience. More complete phrases.';
+    get('description').textContent = isTour ? tour[step].description : 'Call Note now waits for a short pause before transcribing, and checks matching speech across microphone and system audio for clear echoes. Audio and transcript comparisons stay on your device.';
     get('detail').textContent = isTour ? tour[step].detail : 'This screen appears once after each app update. Reopen it anytime from Help → What’s New.';
     for (const preview of dialog.querySelectorAll('[data-preview]')) preview.hidden = preview.dataset.preview !== (isTour ? tour[step].preview : 'news');
     get('back').hidden = !isTour || step === 0;

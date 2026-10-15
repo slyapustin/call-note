@@ -10,7 +10,7 @@ class SpeakerDiagnostics:
     FIELDS = (
         'processed_phrases', 'speaker_known_matches', 'speaker_new_identities',
         'speaker_uncertain', 'diarization_failures', 'overlap_intervals',
-        'streaming_finals',
+        'streaming_finals', 'echo_duplicates_suppressed',
     )
     LIMIT = 2**31 - 1
 

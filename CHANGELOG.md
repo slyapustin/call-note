@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.2.19 — 2026-10-15
+
+- Decode complete phrases after a 1.2-second pause instead of repeatedly decoding rolling drafts. Continuous speech is bounded to 20-second chunks; stopping flushes the remaining phrase.
+- Compare overlapping microphone/system phrases using both text and strong audio correlation; retain one system-audio copy for confirmed echo matches. Short replies, sequential repetitions and uncertain matches remain intact. Existing transcripts and saved audio are unchanged.
+- Delay final publication until both sources can be reconciled and persist ready batches before socket delivery. Add a local aggregate count of confirmed echo copies removed; no text or audio enters diagnostics or analytics.
+
 ## 0.2.18 — 2026-10-15
 
 - Save call audio locally by default for manual and automatic starts, with a transcript-only option. Recording choices remain in effect until the app closes.

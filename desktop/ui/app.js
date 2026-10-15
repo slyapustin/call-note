@@ -162,7 +162,7 @@ class Capture {
     this.microphoneMuted=false;
     $('mute-mic').hidden=!this.streams.some(s=>s.name==='microphone');
     $('mute-mic').textContent='Mute my microphone';$('mute-mic').setAttribute('aria-pressed','false');
-    this.setStage('recording');usage('call_started');$('recording-label').textContent=this.saveAudio?'Transcribing · saving audio locally':'Transcribing live';
+    this.setStage('recording');usage('call_started');$('recording-label').textContent=this.saveAudio?'Listening · saving audio locally':'Listening · preparing complete phrases';
     this.active=true;this.started=Date.now();window.callDesk.recording(true);window.callDesk.menuState({phase:'recording',seconds:0,microphone:this.streams.some(s=>s.name==='microphone'),system:this.streams.some(s=>s.name==='system')});$('setup').hidden=true;$('active').hidden=false;
     timer=setInterval(()=>{if(this.stopping)this.setStage('saving');else reportHealth();window.callDesk.menuState({phase:this.stopping?'saving':'recording',seconds:Math.floor((Date.now()-this.started)/1000)}); $('elapsed').textContent=clock((Date.now()-this.started)/1000); const system=this.meters.system;if(system&&!system.heard&&Date.now()-system.lastSignal>15000){notice(session.platform==='win32'?'No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check your Windows sound output device.':'No system-audio signal detected for 15 seconds. If someone is speaking or audio is playing, check macOS recording permission.');system.lastSignal=Date.now()+45000;} },1000);
   }

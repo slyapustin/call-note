@@ -24,6 +24,7 @@ def test_speaker_diagnostics_count_outcomes_without_retaining_vectors():
         'diarization_failures': 0,
         'overlap_intervals': 0,
         'streaming_finals': 0,
+        'echo_duplicates_suppressed': 0,
     }
     assert all(type(value) is int for value in diagnostics.snapshot().values())
     assert diagnostics.increment('speaker_new_identities', 2**40) is None
@@ -77,6 +78,7 @@ def test_diagnostics_endpoint_uses_existing_auth_and_returns_only_aggregate(monk
             'diarization_failures': 0,
             'overlap_intervals': 0,
             'streaming_finals': 0,
+        'echo_duplicates_suppressed': 0,
         },
         'runtime': {'engine_status': 'ready', 'speaker_model_loaded': False},
     }

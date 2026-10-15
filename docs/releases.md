@@ -95,3 +95,11 @@ Release source: `20cf5d6`. Pre-package, packaged and signed-runtime transcriptio
 Apple accepted installer submission `629a8480-b33f-45db-b56e-fe0d677a089b`. The installer was stapled and passed Gatekeeper and disk-image verification. Installer size: 574,011,975 bytes; updater ZIP: 524,144,595 bytes. The installed app and saved calls were untouched; a full installed-app replacement/relaunch was not tested.
 
 Published 0.2.18 as GitHub Latest. All five uploaded asset SHA-256 digests and sizes match local files; the updater ZIP SHA-512 and size are verified. The public latest-mac.yml matches the local manifest.
+
+## 0.2.19 phrase transcription and echo handling
+
+Desktop capture decodes once after 1.2 seconds of quiet, at a 20-second continuous-speech cap, or on stop. Idle audio is bounded to a half-second pre-roll while timestamps retain the full input timeline. Final phrases wait for both sources' finalized boundaries before comparison, so publication may lag during longer overlapping turns. No rolling partial inference remains.
+
+Cross-source suppression requires at least five tokens on each side, similar text, overlapping times and strong normalized audio correlation within a short lag window. It retains the system-audio copy for confirmed matches. Ambiguous cases, short replies and sequential repetitions are preserved; this is not full acoustic echo cancellation. Only a fixed aggregate counter is exposed in diagnostics. PCM history is transient and bounded to 90 seconds/source, with no new persistence or transmission. Original saved audio and existing transcripts are unchanged.
+
+Validation: 111 Python and 184 desktop tests passed, including delayed/scaled synthetic echoes, distinct overlapping speech, short replies, repeated phrases, missing audio, bounded history, phrase timing, stop flush and service persistence. Independent reviews found no blocking integration issue. A warmed-model replay of 12 seconds of the bundled clean sample plus trailing silence produced the same 38-word text with 1 model call instead of 26 (13.2 versus 171.45 seconds of audio decoded including repeat work). This single synthetic replay is not evidence of general accuracy or live microphone performance. A synthetic 120 ms delayed, attenuated copy was correctly merged once.
