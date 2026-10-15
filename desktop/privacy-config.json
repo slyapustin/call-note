@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "endpoint": "https://call-note-analytics.s-lyapustin.workers.dev",
   "publisher": "Sergey Lyapustin",
   "contact": "hi@slyapustin.com",

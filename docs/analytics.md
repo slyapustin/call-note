@@ -1,6 +1,6 @@
 # Optional usage analytics
 
-Status: implemented, but desktop collection is disabled in `desktop/privacy-config.json`. Existing published releases send no usage analytics. Enabling requires confirmed publisher/contact details, final Terms/Privacy Notice text, Cloudflare Access configuration, and a new signed app release.
+Status: the consent feature is enabled in `desktop/privacy-config.json` for 0.2.14. Optional usage collection remains OFF until each installation explicitly opts in. Publisher: Sergey Lyapustin; privacy contact: hi@slyapustin.com. Releases through 0.2.13 send no usage analytics. The dashboard is protected by Cloudflare Access with an owner-only email policy.
 
 ## User choices
 

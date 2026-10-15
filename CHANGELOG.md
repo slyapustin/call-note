@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-- Prepare optional usage analytics with separate terms acceptance, a Privacy settings dialog, bounded offline delivery, withdrawal and remote deletion. Collection remains disabled pending publisher/contact details and protected dashboard setup.
+## 0.2.14 — 2026-10-15
+
+- Add separate terms acceptance and Privacy settings. Optional usage analytics starts OFF and is enabled only by an explicit opt-in; accepting terms sends a disclosed minimal acceptance record. Existing saved calls remain accessible.
+- Add bounded offline delivery, withdrawal and remote deletion without deleting saved calls. Audio, transcripts, Calendar details, names and raw errors are excluded.
+- Prevent privacy-storage failures from bypassing terms acceptance before new transcription.
 - Add a Cloudflare Workers + D1 backend with fixed event schemas, consent enforcement, daily retention cleanup, request limiting, a private dashboard and aggregate CSV exports.
 
 ## 0.2.13 — 2026-10-14

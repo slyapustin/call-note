@@ -11,7 +11,7 @@ export function setupPrivacy({bridge,beforeOpen=()=>{}}) {
     get('accepted').disabled=!next.available||next.pendingDeletion;
     get('save').disabled=!next.available||next.pendingDeletion;
     get('delete').disabled=!next.accepted&&!next.pendingDeletion;
-    get('status').textContent=next.pendingDeletion?'Deletion is pending. Usage collection is off; the request will retry when online.':!next.available?'Usage statistics are unavailable in this build. No usage data is sent.':next.accepted?'Terms accepted. Optional analytics is '+(next.analytics?'on.':'off.'):'Review the terms and privacy notice. Optional analytics is off unless you choose it.';
+    get('status').textContent=next.pendingDeletion?'Deletion is pending. Usage collection is off; the request will retry when online.':!next.available?(next.documents.available?'Privacy settings are unavailable. New transcription requires saved terms acceptance. No usage data is sent.':'Usage statistics are unavailable in this build. No usage data is sent.'):next.accepted?'Terms accepted. Optional analytics is '+(next.analytics?'on.':'off.'):'Review the terms and privacy notice. Optional analytics is off unless you choose it.';
   }
   async function open() {
     render(await bridge.privacyStatus());beforeOpen();returnFocus=document.activeElement;
@@ -19,7 +19,7 @@ export function setupPrivacy({bridge,beforeOpen=()=>{}}) {
   }
   async function ensure() {
     const next=await bridge.privacyStatus();
-    if(!next.available||next.accepted)return true;
+    if(!next.documents.available||next.accepted)return true;
     if(resolvePending)return false;
     await open();
     return new Promise(resolve=>{resolvePending=resolve;});

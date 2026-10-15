@@ -33,8 +33,8 @@
     }
   ],
   "vars": {
-    "ACCESS_TEAM_DOMAIN": "",
-    "ACCESS_AUD": "",
+    "ACCESS_TEAM_DOMAIN": "slyapustin.cloudflareaccess.com",
+    "ACCESS_AUD": "eb807edf904ed35718bcf9def85790e66b9fa2a270de4a2e0e7ed1e70322ad52",
     "DASHBOARD_ONLY": "true"
   }
 }

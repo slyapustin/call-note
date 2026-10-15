@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 function fixture() {
   const elements=new Map(),calls=[];
-  let state={available:true,accepted:false,analytics:false,pendingDeletion:false,documents:{terms:'Terms',notice:'Notice'}};
+  let state={available:true,accepted:false,analytics:false,pendingDeletion:false,documents:{available:true,terms:'Terms',notice:'Notice'}};
   const document={activeElement:null,getElementById(id){
     if(!elements.has(id))elements.set(id,{checked:false,disabled:false,hidden:true,open:false,isConnected:true,listeners:{},
       addEventListener(name,fn){this.listeners[name]=fn;},showModal(){this.open=true;},close(){this.open=false;this.listeners.close?.();},focus(){document.activeElement=this;}});
@@ -42,6 +42,29 @@ test('canceled capture gate opens no audio device and makes no recording request
   vm.runInContext(app.slice(app.indexOf('async function startCapture()'),app.indexOf("$('start').onclick")),f.context);
   const pending=f.context.startCapture();await settle();f.get('close').onclick();
   assert.equal(await pending,false);assert.deepEqual(calls,[]);
+});
+test('corrupt privacy storage in an enabled build cannot bypass terms acceptance',async()=>{
+  const {registerPrivacy}=require('./privacy.cjs');
+  const directory=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'call-note-privacy-ui-'));
+  try {
+    fs.writeFileSync(path.join(directory,'analytics.json'),'{broken');
+    const privacy=registerPrivacy({ipcMain:{handle(){},on(){}},trusted:()=>true,directory,
+      version:'0.2.14',platform:'darwin',config:{enabled:true,publisher:'Test publisher',contact:'privacy@example.com',policyVersion:'2026-10-15',endpoint:'https://example.com'}});
+    const state=privacy.status();
+    assert.equal(state.documents.available,true);assert.equal(state.available,false);assert.equal(state.accepted,false);
+    const f=fixture();f.setState(state);
+    let resolved=false;
+    const pending=f.controller.ensure().then(value=>{resolved=true;return value;});await settle();
+    assert.equal(resolved,false);assert.equal(f.get('dialog').open,true);
+    assert.equal(f.get('save').disabled,true);assert.match(f.get('status').textContent,/Privacy settings are unavailable/);
+    f.get('close').onclick();assert.equal(await pending,false);assert.deepEqual(f.calls,[]);
+  } finally {fs.rmSync(directory,{recursive:true,force:true});}
+});
+test('disabled builds and already accepted terms allow transcription without a consent prompt',async()=>{
+  for(const state of [{available:false,documents:{available:false,terms:'',notice:''}},{available:false,accepted:true}]) {
+    const f=fixture();f.setState(state);
+    assert.equal(await f.controller.ensure(),true);assert.equal(f.get('dialog').open,false);assert.deepEqual(f.calls,[]);
+  }
 });
 test('explicit optout calls analytics false without repeating acceptance',async()=>{
   const f=fixture();f.setState({accepted:true,analytics:true});await f.controller.open();

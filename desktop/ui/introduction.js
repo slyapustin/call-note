@@ -27,8 +27,8 @@ export function setupIntroduction({bridge, version, canOpen, onError}) {
   function render() {
     const isTour = kind === 'tour';
     get('eyebrow').textContent = isTour ? `A quick tour · ${step + 1} of ${tour.length}` : `What’s new in Call Note ${version}`;
-    get('title').textContent = isTour ? tour[step].title : 'More useful troubleshooting reports.';
-    get('description').textContent = isTour ? tour[step].description : 'Diagnostics now show where capture failed, why the app window exited, and anonymous speaker-detection counters.';
+    get('title').textContent = isTour ? tour[step].title : 'Your privacy choices, in one place.';
+    get('description').textContent = isTour ? tour[step].description : 'Review the terms before your next transcription and choose whether to share optional usage statistics. Analytics starts off.';
     get('detail').textContent = isTour ? tour[step].detail : 'This screen appears once after each app update. Reopen it anytime from Help → What’s New.';
     for (const preview of dialog.querySelectorAll('[data-preview]')) preview.hidden = preview.dataset.preview !== (isTour ? tour[step].preview : 'news');
     get('back').hidden = !isTour || step === 0;

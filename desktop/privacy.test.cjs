@@ -51,7 +51,7 @@ test('off action clears pending events immediately',async t=>{
   await f.handlers['privacy:analytics'](event,false);
   assert.equal(f.api.manager.state.events.length,0);assert.equal(f.api.status().analytics,false);
 });
-test('production policy remains unavailable without complete publisher details',()=>{
-  assert.equal(policy(require('./privacy-config.json')).available,false);
+test('release consent feature is configured and incomplete policies remain unavailable',()=>{
+  assert.equal(policy(require('./privacy-config.json')).available,true);
   for(const changes of [{publisher:''},{contact:''},{policyVersion:'old'},{enabled:false}])assert.equal(policy({...config,...changes}).available,false);
 });
